@@ -1,0 +1,24 @@
+//
+//  ContentView.swift
+//  Vibe-coding-demo
+//
+//  Created by Pavel Korostelev on 13.02.2026.
+//
+
+import SwiftUI
+
+struct ContentView: View {
+    var body: some View {
+        VStack {
+            Image(systemName: "globe")
+                .imageScale(.large)
+                .foregroundStyle(.tint)
+            Text("Hello, world!")
+        }
+        .padding()
+    }
+}
+
+#Preview {
+    ContentView()
+}

@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "tbank.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

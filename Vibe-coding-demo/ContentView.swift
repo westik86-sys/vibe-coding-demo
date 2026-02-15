@@ -1,21 +1,51 @@
-//
-//  ContentView.swift
-//  Vibe-coding-demo
-//
-//  Created by Pavel Korostelev on 13.02.2026.
-//
-
 import SwiftUI
 
 struct ContentView: View {
+    @State private var path: [AppProject] = []
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        NavigationStack(path: $path) {
+            List(AppProject.allCases) { project in
+                Button {
+                    path.append(project)
+                } label: {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(project.title)
+                            .font(.headline)
+                        Text(project.subtitle)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+            .navigationTitle("Showcase App")
+            .navigationDestination(for: AppProject.self) { project in
+                switch project {
+                case .testProject:
+                    TestProjectView()
+                case .avatarSettings:
+                    ProductAvatarView()
+                case .inap:
+                    InapView()
+                case .notificationCenter:
+                    NotificationCenterView()
+                case .notificationCenterPulseLike:
+                    PulseLikeNotificationCenterView()
+                case .ncInap:
+                    NCInAppView()
+                case .envelope:
+                    EnvelopeView()
+                case .particleEffectPocMain:
+                    ParticleEffectPocMainView()
+
+                // IMPORTANT: When you add Project 2 to AppProject,
+                // also add its destination here:
+                // case .project2:
+                //     Project2View()
+                }
+            }
         }
-        .padding()
     }
 }
 

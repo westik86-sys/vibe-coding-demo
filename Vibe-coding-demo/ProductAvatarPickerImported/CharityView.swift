@@ -11,14 +11,176 @@ struct CharityView: View {
     @State private var lastPulseTick: Int = -1
     @State private var pulseBoost: Float = 0.0
     @State private var showTuningPanel = false
+    @State private var showBottomSheet = false
     @State private var shaderSettings = CharityShaderSettings()
+    @State private var showEdgeGlow = false
+    @State private var breatheBoost: Float = 0.0
+    @State private var shockStartDate: Date?
+    @State private var shockBreatheBoost: Float = 0.0
+    @State private var text1Opacity: Double = 1.0
+    @State private var text2Opacity: Double = 0.0
+    
+    private let successHaptic = UINotificationFeedbackGenerator()
+    private let shockDuration: TimeInterval = 0.75
+    private let shockWidth: Float = 0.4025
+    private let shockIntensity: Float = 0.55
+    private let shockBreatheBoostValue: Float = 0.35
     
     private var backgroundColor: Color {
-        colorScheme == .dark ? .black : .white
+        colorScheme == .dark ? .black : lightBackgroundTint.color
     }
     
     private var primaryTextColor: Color {
         colorScheme == .dark ? .white : Color(red: 0.2, green: 0.2, blue: 0.2)
+    }
+
+    private typealias BackgroundTint = (color: Color, simd: SIMD3<Float>)
+
+    private var lightBackgroundTint: BackgroundTint {
+        tintedBackground(from: currentBaseColor, saturationMultiplier: 0.2)
+    }
+
+    private func tintedBackground(from rgb: SIMD3<Float>, saturationMultiplier: CGFloat) -> BackgroundTint {
+        let uiColor = UIColor(
+            red: CGFloat(rgb.x),
+            green: CGFloat(rgb.y),
+            blue: CGFloat(rgb.z),
+            alpha: 1.0
+        )
+        var hue: CGFloat = 0
+        var saturation: CGFloat = 0
+        var brightness: CGFloat = 0
+        var alpha: CGFloat = 0
+        if uiColor.getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha) {
+            let newSaturation = min(max(saturation * saturationMultiplier, 0.0), 1.0)
+            let tint = UIColor(hue: hue, saturation: newSaturation, brightness: 1.0, alpha: 1.0)
+            var r: CGFloat = 0
+            var g: CGFloat = 0
+            var b: CGFloat = 0
+            var a: CGFloat = 0
+            tint.getRed(&r, green: &g, blue: &b, alpha: &a)
+            return (Color(tint), SIMD3<Float>(Float(r), Float(g), Float(b)))
+        }
+        return (Color.white, SIMD3<Float>(1.0, 1.0, 1.0))
+    }
+    
+    // Dynamic color gradient based on donation value
+    private var currentBaseColor: SIMD3<Float> {
+        if colorScheme == .light && donationValue == 100 {
+            // Light mode, 100%: only red/orange (no yellow)
+            return SIMD3<Float>(1.0, 0.38, 0.0)
+        }
+        let progress = Float(donationValue) / 100.0
+        
+        if progress < 0.25 {
+            // 0-25%: Bright Blue to Vibrant Purple
+            let t = progress * 4.0 // 0.0 to 1.0
+            let brightBlue = SIMD3<Float>(0.0, 0.6, 1.0) // Яркий синий
+            let vibrantPurple = SIMD3<Float>(0.8, 0.2, 1.0) // Яркий фиолетовый
+            return mix(brightBlue, vibrantPurple, t)
+        } else if progress < 0.5 {
+            // 25-50%: Vibrant Purple to Softer Magenta-Pink
+            let t = (progress - 0.25) * 4.0 // 0.0 to 1.0
+            let vibrantPurple = SIMD3<Float>(0.8, 0.2, 1.0) // Яркий фиолетовый
+            let softerMagenta = SIMD3<Float>(0.95, 0.3, 0.57) // Чуть менее яркий маджента-розовый (95% вместо 100%)
+            return mix(vibrantPurple, softerMagenta, t)
+        } else {
+            // 50-100%: Softer Magenta-Pink to Red
+            let t = (progress - 0.5) * 2.0 // 0.0 to 1.0
+            let softerMagenta = SIMD3<Float>(0.95, 0.3, 0.57) // Чуть менее яркий маджента-розовый
+            let red = SIMD3<Float>(0.929, 0.204, 0.216) // #ED3437
+            return mix(softerMagenta, red, t)
+        }
+    }
+    
+    private var currentGlowColor: SIMD3<Float> {
+        if colorScheme == .light && donationValue == 100 {
+            // Light mode, 100%: clean orange glow
+            return SIMD3<Float>(1.0, 0.5, 0.0)
+        }
+        let progress = Float(donationValue) / 100.0
+        
+        if progress < 0.25 {
+            // 0-25%: Bright Cyan to Softer Purple
+            let t = progress * 4.0
+            let brightCyan = SIMD3<Float>(0.2, 0.8, 1.0) // Яркий циан
+            let softerPurple = SIMD3<Float>(0.75, 0.35, 0.85) // Менее яркий фиолетовый
+            return mix(brightCyan, softerPurple, t)
+        } else if progress < 0.5 {
+            // 25-50%: Softer Purple to Softer Pink (снижена яркость для 23-40%)
+            let t = (progress - 0.25) * 4.0
+            let softerPurple = SIMD3<Float>(0.75, 0.35, 0.85) // Менее яркий фиолетовый
+            let softerPink = SIMD3<Float>(0.85, 0.45, 0.62) // Еще менее яркий розовый
+            return mix(softerPurple, softerPink, t)
+        } else {
+            // 50-100%: Softer Pink to Yellow
+            let t = (progress - 0.5) * 2.0
+            let softerPink = SIMD3<Float>(0.85, 0.45, 0.62)
+            let yellow = SIMD3<Float>(1.0, 0.85, 0.0) // Яркий желтый
+            return mix(softerPink, yellow, t)
+        }
+    }
+    
+    // Контрастный цвет для внешних краев эффекта
+    private var currentEdgeColor: SIMD3<Float> {
+        if colorScheme == .light && donationValue == 100 {
+            // Light mode, 100%: deeper orange-red edges
+            return SIMD3<Float>(1.0, 0.3, 0.0)
+        }
+        let progress = Float(donationValue) / 100.0
+        
+        if progress < 0.25 {
+            // 0-25%: Deep Blue to Deep Purple (темнее основного)
+            let t = progress * 4.0
+            let deepBlue = SIMD3<Float>(0.0, 0.3, 0.7) // Глубокий синий
+            let deepPurple = SIMD3<Float>(0.5, 0.1, 0.7) // Глубокий фиолетовый
+            return mix(deepBlue, deepPurple, t)
+        } else if progress < 0.5 {
+            // 25-50%: Deep Purple to Deep Magenta
+            let t = (progress - 0.25) * 4.0
+            let deepPurple = SIMD3<Float>(0.5, 0.1, 0.7) // Глубокий фиолетовый
+            let deepMagenta = SIMD3<Float>(0.7, 0.15, 0.4) // Глубокий маджента
+            return mix(deepPurple, deepMagenta, t)
+        } else {
+            // 50-100%: Deep Magenta to Orange
+            let t = (progress - 0.5) * 2.0
+            let deepMagenta = SIMD3<Float>(0.7, 0.15, 0.4)
+            let orange = SIMD3<Float>(1.0, 0.5, 0.0) // Оранжевый (контраст с желтым)
+            return mix(deepMagenta, orange, t)
+        }
+    }
+    
+    private func mix(_ a: SIMD3<Float>, _ b: SIMD3<Float>, _ t: Float) -> SIMD3<Float> {
+        return a + (b - a) * t
+    }
+    
+    private var edgeGlowOpacity: Double {
+        guard showEdgeGlow else { return 0.0 }
+        
+        if donationValue < 90 {
+            return 0.0
+        } else if donationValue == 100 {
+            return 0.15
+        } else {
+            // Плавный фейд от 90 до 100: 0.0 -> 0.15
+            let progress = Double(donationValue - 90) / 10.0
+            return progress * 0.15
+        }
+    }
+
+    private func triggerShockWave() {
+        successHaptic.prepare()
+        successHaptic.notificationOccurred(.success)
+        shockStartDate = Date()
+        shockBreatheBoost = shockBreatheBoostValue
+        withAnimation(.easeOut(duration: shockDuration)) {
+            shockBreatheBoost = 0.0
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            withAnimation(.easeInOut(duration: 0.5)) {
+                showBottomSheet = true
+            }
+        }
     }
     
     var body: some View {
@@ -29,13 +191,79 @@ struct CharityView: View {
                     hasPercentCenter: hasPercentCenter,
                     progress: displayProgress,
                     pulseBoost: pulseBoost,
-                    settings: shaderSettings
+                    breatheBoost: breatheBoost + shockBreatheBoost,
+                    shockStartDate: shockStartDate,
+                    shockDuration: Float(shockDuration),
+                    shockWidth: shockWidth,
+                    shockIntensity: shockIntensity,
+                    settings: shaderSettings,
+                    baseColor: currentBaseColor,
+                    glowColor: currentGlowColor,
+                    edgeColor: currentEdgeColor
                 )
+                .animation(.easeInOut(duration: 0.8), value: currentBaseColor)
+                .animation(.easeInOut(duration: 0.8), value: currentGlowColor)
                 .ignoresSafeArea()
             } else {
                 backgroundColor
                     .ignoresSafeArea()
             }
+            
+            // Edge glow effect for values 90-100
+            GeometryReader { geometry in
+                ZStack {
+                    // Top edge
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color.orange.opacity(edgeGlowOpacity),
+                            Color.clear
+                        ]),
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: geometry.size.height * 0.162)
+                    .frame(maxHeight: .infinity, alignment: .top)
+                    
+                    // Bottom edge
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color.orange.opacity(edgeGlowOpacity),
+                            Color.clear
+                        ]),
+                        startPoint: .bottom,
+                        endPoint: .top
+                    )
+                    .frame(height: geometry.size.height * 0.162)
+                    .frame(maxHeight: .infinity, alignment: .bottom)
+                    
+                    // Leading edge
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color.orange.opacity(edgeGlowOpacity),
+                            Color.clear
+                        ]),
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .frame(width: geometry.size.width * 0.162)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    // Trailing edge
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color.orange.opacity(edgeGlowOpacity),
+                            Color.clear
+                        ]),
+                        startPoint: .trailing,
+                        endPoint: .leading
+                    )
+                    .frame(width: geometry.size.width * 0.162)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+            }
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
+            .animation(.easeInOut(duration: 0.6), value: edgeGlowOpacity)
             
             VStack(spacing: 0) {
                 Text("Какой процент от кэшбэка\nВы бы хотели пожертвовать?")
@@ -48,7 +276,9 @@ struct CharityView: View {
                 
                 Text("\(donationValue)%")
                     .font(.system(size: 60, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
+                    .foregroundColor(primaryTextColor)
+                    .shadow(color: .white.opacity(0.3), radius: 8, x: 0, y: 0)
+                    .shadow(color: .white.opacity(0.15), radius: 16, x: 0, y: 0)
                     .background(
                         GeometryReader { proxy in
                             Color.clear.preference(
@@ -60,22 +290,35 @@ struct CharityView: View {
                             )
                         }
                     )
+                    .onTapGesture {
+                        triggerShockWave()
+                    }
                 
                 Spacer()
                 
-                Text(donationValue == 0 ? "Добрая душа 😇" : "Примерно \(approxRubles(for: donationValue)) ₽")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(primaryTextColor)
+                ZStack {
+                    ZStack {
+                        Text(donationValue == 0 ? "Важен каждый 🌟" : "Примерно \(approxRubles(for: donationValue)) ₽")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(primaryTextColor)
+                            .opacity(text1Opacity)
+                        
+                        Text("Вот это щедрость!")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(primaryTextColor)
+                            .opacity(text2Opacity)
+                    }
                     .padding(.horizontal, 12)
                     .padding(.top, 6.5)
                     .padding(.bottom, 7.5)
                     .background(
-                        (colorScheme == .dark
+                        colorScheme == .dark
                             ? Color.white.opacity(0.1)
-                            : Color(red: 0.0, green: 0.0627, blue: 0.1412).opacity(0.03))
+                            : Color.white.opacity(0.25)
                     )
                     .clipShape(Capsule())
-                    .padding(.bottom, 40)
+                }
+                .padding(.bottom, 40)
                 
                 RulerPicker(
                     range: 0...100,
@@ -89,13 +332,17 @@ struct CharityView: View {
                         showTuningPanel.toggle()
                     }
                 }) {
-                    Text("Далее")
+                    Text("Помочь")
                         .font(.system(size: 17, weight: .regular))
-                        .foregroundColor(.white)
+                        .foregroundColor(primaryTextColor)
                         .kerning(-0.41)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
-                        .background(Color.white.opacity(0.3))
+                        .background(
+                            colorScheme == .dark
+                                ? Color.white.opacity(0.3)
+                                : Color.black.opacity(0.08)
+                        )
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
                 .padding(.horizontal, 16)
@@ -109,6 +356,11 @@ struct CharityView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        .sheet(isPresented: $showBottomSheet) {
+            BottomSheetView()
+                .presentationDetents([.height(sheetDetentHeight)])
+                .presentationDragIndicator(.hidden)
+        }
         .onPreferenceChange(PercentCenterKey.self) { point in
             if let point {
                 percentCenter = point
@@ -117,8 +369,71 @@ struct CharityView: View {
         }
         .onChange(of: donationValue) { newValue in
             withAnimation(.easeInOut(duration: 0.6)) {
-                displayProgress = Float(newValue) / 100.0
+                // При значении < 10 прогресс минимальный (0.0-0.1)
+                // При значении >= 10 прогресс нарастает от 0.1 до 1.0
+                if newValue < 10 {
+                    displayProgress = Float(newValue) / 100.0
+                } else {
+                    let normalizedValue = Float(newValue - 10) / 90.0 // 10-100 -> 0-1
+                    displayProgress = 0.1 + normalizedValue * 0.9 // Диапазон 0.1-1.0
+                }
             }
+            
+            // Edge glow and breathe boost logic: show for 200ms, fade out 400ms when reaching 90+
+            if newValue >= 90 {
+                // Start both animations simultaneously
+                withAnimation(.easeOut(duration: 0.2)) {
+                    showEdgeGlow = true
+                    if newValue == 100 {
+                        breatheBoost = 0.1
+                        // Trigger success haptic at 100%
+                        successHaptic.notificationOccurred(.success)
+                    }
+                }
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    withAnimation(.easeOut(duration: 0.4)) {
+                        showEdgeGlow = false
+                        breatheBoost = 0.0
+                    }
+                }
+            }
+            
+            // Generosity message at 100%
+            if newValue == 100 {
+                // Step 1: Fade out text 1 (0.6s) - starts immediately with breathe animation
+                withAnimation(.easeIn(duration: 0.6)) {
+                    text1Opacity = 0
+                }
+                
+                // Step 2: After fade out + 50ms pause, fade in text 2
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6 + 0.05) {
+                    withAnimation(.easeIn(duration: 0.6)) {
+                        text2Opacity = 1
+                    }
+                    
+                    // Step 3: After showing 2s + 50ms pause, fade out text 2
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6 + 2.0 + 0.05) {
+                        withAnimation(.easeIn(duration: 0.6)) {
+                            text2Opacity = 0
+                        }
+                        
+                        // Step 4: After fade out + 50ms pause, fade in text 1
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6 + 0.05) {
+                            withAnimation(.easeIn(duration: 0.6)) {
+                                text1Opacity = 1
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Reset if value changes from 100
+                if text1Opacity != 1 || text2Opacity != 0 {
+                    text1Opacity = 1
+                    text2Opacity = 0
+                }
+            }
+            
             let tick = (newValue / 5) * 5
             if tick != lastPulseTick {
                 lastPulseTick = tick
@@ -131,7 +446,15 @@ struct CharityView: View {
             }
         }
         .onAppear {
-            displayProgress = Float(donationValue) / 100.0
+            if donationValue < 10 {
+                displayProgress = Float(donationValue) / 100.0
+            } else {
+                let normalizedValue = Float(donationValue - 10) / 90.0
+                displayProgress = 0.1 + normalizedValue * 0.9
+            }
+            
+            // Prepare success haptic generator
+            successHaptic.prepare()
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -169,12 +492,61 @@ struct CharityView: View {
 
 @available(iOS 17.0, *)
 private struct CharityRippleBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
     let percentCenter: CGPoint
     let hasPercentCenter: Bool
     let progress: Float
     let pulseBoost: Float
+    let breatheBoost: Float
+    let shockStartDate: Date?
+    let shockDuration: Float
+    let shockWidth: Float
+    let shockIntensity: Float
     let settings: CharityShaderSettings
+    let baseColor: SIMD3<Float>
+    let glowColor: SIMD3<Float>
+    let edgeColor: SIMD3<Float>
     @State private var startDate = Date()
+
+    private var shaderOvalColor: SIMD3<Float> {
+        colorScheme == .dark ? settings.ovalColor : SIMD3<Float>(0.98, 0.98, 0.99)
+    }
+
+    private var lightBackgroundTint: SIMD3<Float> {
+        tintedBackground(from: baseColor, saturationMultiplier: 0.2)
+    }
+
+    private var shaderBackgroundColor: SIMD3<Float> {
+        colorScheme == .dark ? settings.backgroundColor : lightBackgroundTint
+    }
+
+    private var shaderNoiseStrength: Float {
+        colorScheme == .dark ? settings.noiseStrength : settings.noiseStrength * 0.12
+    }
+
+    private func tintedBackground(from rgb: SIMD3<Float>, saturationMultiplier: CGFloat) -> SIMD3<Float> {
+        let uiColor = UIColor(
+            red: CGFloat(rgb.x),
+            green: CGFloat(rgb.y),
+            blue: CGFloat(rgb.z),
+            alpha: 1.0
+        )
+        var hue: CGFloat = 0
+        var saturation: CGFloat = 0
+        var brightness: CGFloat = 0
+        var alpha: CGFloat = 0
+        if uiColor.getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha) {
+            let newSaturation = min(max(saturation * saturationMultiplier, 0.0), 1.0)
+            let tint = UIColor(hue: hue, saturation: newSaturation, brightness: 1.0, alpha: 1.0)
+            var r: CGFloat = 0
+            var g: CGFloat = 0
+            var b: CGFloat = 0
+            var a: CGFloat = 0
+            tint.getRed(&r, green: &g, blue: &b, alpha: &a)
+            return SIMD3<Float>(Float(r), Float(g), Float(b))
+        }
+        return SIMD3<Float>(1.0, 1.0, 1.0)
+    }
 
     var body: some View {
         TimelineView(.animation) { timeline in
@@ -188,6 +560,10 @@ private struct CharityRippleBackground: View {
                     let y = (percentCenter.y - frame.minY) / max(shaderSize.height, 1)
                     return CGPoint(x: min(max(x, 0), 1), y: min(max(y, 0), 1))
                 }()
+                let shockElapsed: Float = {
+                    guard let shockStartDate else { return -1.0 }
+                    return Float(timeline.date.timeIntervalSince(shockStartDate))
+                }()
                 Rectangle()
                     .fill(Color.black)
                     .colorEffect(
@@ -199,12 +575,17 @@ private struct CharityRippleBackground: View {
                             .float4(settings.waveSpeed, settings.waveAmp, settings.brightnessBase, settings.climaxStart),
                             .float4(settings.glowSize, settings.glowIntensity, settings.climaxStrength, settings.pulseStrength),
                             .float4(settings.blurAmount, settings.coreWidth, settings.coreHeight, settings.coreRoundness),
-                            .float4(settings.eggBottomWiden, settings.eggTopWiden, 0.0, 0.0),
-                            .float4(settings.noiseStrength, settings.noiseSize, 0.0, 0.0),
-                            .float3(settings.baseColor.x, settings.baseColor.y, settings.baseColor.z),
-                            .float3(settings.glowColor.x, settings.glowColor.y, settings.glowColor.z),
-                            .float3(settings.ovalColor.x, settings.ovalColor.y, settings.ovalColor.z),
-                            .float3(settings.backgroundColor.x, settings.backgroundColor.y, settings.backgroundColor.z)
+                            .float4(shaderNoiseStrength, settings.noiseSize, 0.0, 0.0),
+                            .float4(settings.rayIntensity, settings.rayCount, settings.raySpeed, settings.raySharpness),
+                            .float3(baseColor.x, baseColor.y, baseColor.z),
+                            .float3(glowColor.x, glowColor.y, glowColor.z),
+                            .float3(edgeColor.x, edgeColor.y, edgeColor.z),
+                            .float3(shaderOvalColor.x, shaderOvalColor.y, shaderOvalColor.z),
+                            .float3(shaderBackgroundColor.x, shaderBackgroundColor.y, shaderBackgroundColor.z),
+                            .float(breatheBoost),
+                            .float(settings.distortion),
+                            .float(settings.distortionAnimation),
+                            .float4(shockElapsed, shockDuration, shockWidth, shockIntensity)
                         )
                     )
                     .frame(width: shaderSize.width, height: shaderSize.height)
@@ -224,26 +605,30 @@ private struct PercentCenterKey: PreferenceKey {
 }
 
 private struct CharityShaderSettings: Codable {
-    var baseEnergy: Float = 0.6
+    var baseEnergy: Float = 0.84  // 0.6 * 1.4 = 0.84 (увеличено на 40%)
     var energyCurve: Float = 1.0
     var climaxStart: Float = 0.92
     var climaxStrength: Float = 0.2
-    var pulseStrength: Float = 0.16
-    var pulseDecay: Float = 0.6
-    var pulseDelay: Float = 0.06
-    var waveSpeed: Float = 0.07
-    var waveAmp: Float = 0.16
-    var brightnessBase: Float = 0.85
+    var pulseStrength: Float = 0.08
+    var pulseDecay: Float = 0.8
+    var pulseDelay: Float = 0.08
+    var waveSpeed: Float = 0.09
+    var waveAmp: Float = 0.112  // 0.08 * 1.4 = 0.112 (увеличено на 40%)
+    var brightnessBase: Float = 1.19  // 0.85 * 1.4 = 1.19 (увеличено на 40%)
     var glowSize: Float = 0.25
-    var glowIntensity: Float = 0.55
+    var glowIntensity: Float = 0.77  // 0.55 * 1.4 = 0.77 (увеличено на 40%)
     var blurAmount: Float = 0.08
     var coreWidth: Float = 0.216
     var coreHeight: Float = 0.27
     var coreRoundness: Float = 2.1
-    var eggBottomWiden: Float = 1.18
-    var eggTopWiden: Float = 0.92
     var noiseStrength: Float = 0.25
     var noiseSize: Float = 0.2
+    var distortion: Float = 0.3  // Shape distortion (0.1-1.0)
+    var distortionAnimation: Float = 0.5  // Animated distortion intensity (0.0-1.0)
+    var rayIntensity: Float = 0.15
+    var rayCount: Float = 10.0
+    var raySpeed: Float = 0.12
+    var raySharpness: Float = 4.2
     var baseColor: SIMD3<Float> = .init(0.0, 0.514, 1.0)
     var glowColor: SIMD3<Float> = .init(0.0, 0.6, 1.0)
     var ovalColor: SIMD3<Float> = .init(0.109, 0.109, 0.118)
@@ -255,8 +640,8 @@ private struct CharityShaderSettings: Codable {
         case waveSpeed, waveAmp, brightnessBase
         case glowSize, glowIntensity, blurAmount
         case coreWidth, coreHeight, coreRoundness
-        case eggBottomWiden, eggTopWiden
-        case noiseStrength, noiseSize
+        case noiseStrength, noiseSize, distortion, distortionAnimation
+        case rayIntensity, rayCount, raySpeed, raySharpness
         case baseColor, glowColor, ovalColor, backgroundColor
     }
 
@@ -280,10 +665,14 @@ private struct CharityShaderSettings: Codable {
         coreWidth = try container.decode(Float.self, forKey: .coreWidth)
         coreHeight = try container.decode(Float.self, forKey: .coreHeight)
         coreRoundness = try container.decode(Float.self, forKey: .coreRoundness)
-        eggBottomWiden = try container.decode(Float.self, forKey: .eggBottomWiden)
-        eggTopWiden = try container.decode(Float.self, forKey: .eggTopWiden)
         noiseStrength = try container.decode(Float.self, forKey: .noiseStrength)
         noiseSize = try container.decode(Float.self, forKey: .noiseSize)
+        distortion = try container.decode(Float.self, forKey: .distortion)
+        distortionAnimation = try container.decode(Float.self, forKey: .distortionAnimation)
+        rayIntensity = try container.decodeIfPresent(Float.self, forKey: .rayIntensity) ?? rayIntensity
+        rayCount = try container.decodeIfPresent(Float.self, forKey: .rayCount) ?? rayCount
+        raySpeed = try container.decodeIfPresent(Float.self, forKey: .raySpeed) ?? raySpeed
+        raySharpness = try container.decodeIfPresent(Float.self, forKey: .raySharpness) ?? raySharpness
         baseColor = Self.decodeColor(from: container, key: .baseColor)
         glowColor = Self.decodeColor(from: container, key: .glowColor)
         ovalColor = Self.decodeColor(from: container, key: .ovalColor)
@@ -308,10 +697,14 @@ private struct CharityShaderSettings: Codable {
         try container.encode(coreWidth, forKey: .coreWidth)
         try container.encode(coreHeight, forKey: .coreHeight)
         try container.encode(coreRoundness, forKey: .coreRoundness)
-        try container.encode(eggBottomWiden, forKey: .eggBottomWiden)
-        try container.encode(eggTopWiden, forKey: .eggTopWiden)
         try container.encode(noiseStrength, forKey: .noiseStrength)
         try container.encode(noiseSize, forKey: .noiseSize)
+        try container.encode(distortion, forKey: .distortion)
+        try container.encode(distortionAnimation, forKey: .distortionAnimation)
+        try container.encode(rayIntensity, forKey: .rayIntensity)
+        try container.encode(rayCount, forKey: .rayCount)
+        try container.encode(raySpeed, forKey: .raySpeed)
+        try container.encode(raySharpness, forKey: .raySharpness)
         try Self.encodeColor(baseColor, into: &container, key: .baseColor)
         try Self.encodeColor(glowColor, into: &container, key: .glowColor)
         try Self.encodeColor(ovalColor, into: &container, key: .ovalColor)
@@ -440,12 +833,20 @@ private struct ShaderTuningPanel: View {
                         SliderRow(title: "Core Width", value: $settings.coreWidth, range: 0.15...0.35)
                         SliderRow(title: "Core Height", value: $settings.coreHeight, range: 0.18...0.4)
                         SliderRow(title: "Core Roundness", value: $settings.coreRoundness, range: 1.5...3.0)
-                        SliderRow(title: "Egg Bottom", value: $settings.eggBottomWiden, range: 0.9...1.4)
-                        SliderRow(title: "Egg Top", value: $settings.eggTopWiden, range: 0.7...1.2)
 
                         SectionHeader("Noise")
                         SliderRow(title: "Noise Strength", value: $settings.noiseStrength, range: 0.0...0.4)
                         SliderRow(title: "Noise Size", value: $settings.noiseSize, range: 0.05...0.6)
+                        
+                        SectionHeader("Distortion")
+                        SliderRow(title: "Shape Distortion", value: $settings.distortion, range: 0.1...1.0)
+                        SliderRow(title: "Animated Distortion", value: $settings.distortionAnimation, range: 0.0...1.0)
+
+                        SectionHeader("Rays")
+                        SliderRow(title: "Ray Intensity", value: $settings.rayIntensity, range: 0.0...0.6)
+                        SliderRow(title: "Ray Count", value: $settings.rayCount, range: 6.0...40.0)
+                        SliderRow(title: "Ray Speed", value: $settings.raySpeed, range: 0.0...0.6)
+                        SliderRow(title: "Ray Sharpness", value: $settings.raySharpness, range: 1.0...6.0)
 
                         SectionHeader("Colors")
                         ColorSliders(title: "Base Color", color: $settings.baseColor)
@@ -518,10 +919,12 @@ private struct ShaderTuningPanel: View {
         next.coreWidth = Float.random(in: 0.15...0.35)
         next.coreHeight = Float.random(in: 0.18...0.4)
         next.coreRoundness = Float.random(in: 1.5...3.0)
-        next.eggBottomWiden = Float.random(in: 0.9...1.4)
-        next.eggTopWiden = Float.random(in: 0.7...1.2)
         next.noiseStrength = Float.random(in: 0.0...0.4)
         next.noiseSize = Float.random(in: 0.05...0.6)
+        next.rayIntensity = Float.random(in: 0.0...0.6)
+        next.rayCount = Float.random(in: 6.0...40.0)
+        next.raySpeed = Float.random(in: 0.0...0.6)
+        next.raySharpness = Float.random(in: 1.0...6.0)
         next.baseColor = SIMD3<Float>(Float.random(in: 0...1), Float.random(in: 0...1), Float.random(in: 0...1))
         next.glowColor = SIMD3<Float>(Float.random(in: 0...1), Float.random(in: 0...1), Float.random(in: 0...1))
         next.ovalColor = SIMD3<Float>(Float.random(in: 0...1), Float.random(in: 0...1), Float.random(in: 0...1))
@@ -698,8 +1101,9 @@ private struct RulerPicker: View {
                                 }
                                 
                                 if isActive {
-                                    GlassIndicator(color: indicatorColor)
-                                        .frame(width: 4.5, height: indicatorHeight)
+                                    Capsule(style: .continuous)
+                                        .fill(indicatorColor)
+                                        .frame(width: 2.5, height: indicatorHeight)
                                 }
                             }
                             .frame(width: tickWidth, height: indicatorHeight)
@@ -859,37 +1263,6 @@ private struct TrailVisual {
     let color: Color
 }
 
-private struct GlassIndicator: View {
-    let color: Color
-    @Environment(\.colorScheme) private var colorScheme
-
-    var body: some View {
-        ZStack {
-            Capsule(style: .continuous)
-                .fill(color.opacity(0.65))
-
-            Capsule(style: .continuous)
-                .fill(.ultraThinMaterial)
-                .opacity(colorScheme == .dark ? 0.55 : 0.4)
-
-            Capsule(style: .continuous)
-                .stroke(Color.white.opacity(colorScheme == .dark ? 0.35 : 0.25), lineWidth: 0.5)
-        }
-        .shadow(
-            color: colorScheme == .dark ? Color.black.opacity(0.6) : Color.black.opacity(0.2),
-            radius: 6,
-            x: 0,
-            y: 2
-        )
-        .shadow(
-            color: color.opacity(colorScheme == .dark ? 0.35 : 0.2),
-            radius: 5,
-            x: 0,
-            y: 0
-        )
-    }
-}
-
 private enum SystemGlassStyle {
     static let fillColor = Color.white
     static let strokeColor = Color(uiColor: .separator).opacity(0.4)
@@ -971,7 +1344,7 @@ struct CharityViewV2: View {
                 
                 Spacer()
                 
-                Text("Добрая душа 😇")
+                Text("Важен каждый 🌟")
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(primaryTextColor)
                     .padding(.horizontal, 12)
@@ -993,13 +1366,17 @@ struct CharityViewV2: View {
                 .padding(.bottom, 52)
                 
                 Button(action: {}) {
-                    Text("Далее")
+                    Text("Помочь")
                         .font(.system(size: 17, weight: .regular))
-                        .foregroundColor(.white)
+                        .foregroundColor(primaryTextColor)
                         .kerning(-0.41)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
-                        .background(Color.white.opacity(0.3))
+                        .background(
+                            colorScheme == .dark
+                                ? Color.white.opacity(0.3)
+                                : Color.black.opacity(0.08)
+                        )
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
                 .padding(.horizontal, 16)
@@ -1053,6 +1430,49 @@ struct CharityViewV2: View {
                         .foregroundColor(.primary)
                 }
             }
+        }
+    }
+}
+
+private extension CharityView {
+    var sheetDetentHeight: CGFloat {
+        let topGap: CGFloat = topSafeAreaInset + 12
+        return max(0, UIScreen.main.bounds.height - topGap)
+    }
+
+    var topSafeAreaInset: CGFloat {
+        guard let windowScene = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .first else {
+            return 0
+        }
+        return windowScene.windows.first(where: { $0.isKeyWindow })?.safeAreaInsets.top ?? 0
+    }
+}
+
+private struct BottomSheetView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Color.white
+                .ignoresSafeArea()
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        if #available(iOS 26.0, *) {
+                            Button(role: .close) {
+                                dismiss()
+                            }
+                        } else {
+                            Button {
+                                dismiss()
+                            } label: {
+                                Image(systemName: "xmark")
+                            }
+                        }
+                    }
+                }
         }
     }
 }

@@ -80,12 +80,17 @@ static float hash21(float2 p) {
     float4 wave,
     float4 glow,
     float4 shape,
-    float4 egg,
     float4 noise,
+    float4 rays,
     float3 baseColor,
     float3 glowColor,
+    float3 edgeColor,
     float3 ovalColor,
-    float3 backgroundColor
+    float3 backgroundColor,
+    float breatheBoost,
+    float distortion,
+    float distortionAnimation,
+    float4 shock
 ) {
     if (color.a <= 0.0h) {
         return color;
@@ -111,18 +116,16 @@ static float hash21(float2 p) {
     float coreHeight = shape.z;
     float coreRoundness = shape.w;
 
-    float eggBottom = egg.x;
-    float eggTop = egg.y;
-
     float noiseStrengthParam = noise.x;
     float noiseSizeParam = noise.y;
+    float rayIntensityParam = rays.x;
+    float rayCountParam = rays.y;
+    float raySpeedParam = rays.z;
+    float raySharpnessParam = rays.w;
 
     float2 uv = position / size;
     float invAr = size.y / size.x;
     float2 p = float2(center.x - uv.x, (center.y - uv.y) * invAr);
-    float eggT = smoothstep(-0.35, 0.35, p.y);
-    float eggWiden = mix(eggBottom, eggTop, eggT);
-    p.x /= eggWiden;
 
     float progressClamped = clamp(progress, 0.0, 1.0);
     float energy = smoothstep(0.0, 1.0, progressClamped);
@@ -132,8 +135,28 @@ static float hash21(float2 p) {
     float climax = smoothstep(clamp(climaxStart, 0.5, 0.99), 1.0, progressClamped);
 
     float breatheAmp = mix(0.015, 0.045, energy);
-    float breathe = 1.0 + breatheAmp * sin(time * 1.5);
-    float2 superellipseSize = float2(coreWidth, coreHeight) * breathe;
+    float breathe = 1.0 + breatheAmp * sin(time * 1.5) + breatheBoost;
+    
+    // Apply distortion to the shape
+    float angle = atan2(p.y, p.x);
+    float distortionNoise1 = sin(angle * 3.0 + time * 0.5) * 0.5 + 0.5;
+    float distortionNoise2 = sin(angle * 5.0 - time * 0.3) * 0.5 + 0.5;
+    float distortionNoise3 = sin(angle * 7.0 + time * 0.7) * 0.5 + 0.5;
+    float combinedDistortion = (distortionNoise1 * 0.5 + distortionNoise2 * 0.3 + distortionNoise3 * 0.2);
+    
+    // Add animated distortion synchronized with breathe
+    float breathePhase = sin(time * 1.5);
+    float animatedDistortion1 = sin(angle * 4.0 + breathePhase * 3.14159) * 0.5 + 0.5;
+    float animatedDistortion2 = sin(angle * 6.0 - breathePhase * 3.14159 * 0.7) * 0.5 + 0.5;
+    float combinedAnimatedDistortion = (animatedDistortion1 * 0.6 + animatedDistortion2 * 0.4);
+    
+    // Combine static and animated distortion
+    float totalDistortion = combinedDistortion * distortion + (combinedAnimatedDistortion - 0.5) * distortionAnimation;
+    
+    // Apply distortion to the size (increased by 30%: 0.15 * 1.3 = 0.195)
+    float distortionFactor = 1.0 + totalDistortion * 0.195;
+    float2 superellipseSize = float2(coreWidth, coreHeight) * breathe * distortionFactor;
+    
     float distToOval = sdSuperellipse(p, superellipseSize, coreRoundness);
     float dist = length(p);
 
@@ -157,11 +180,45 @@ static float hash21(float2 p) {
     float glowField = smoothstep(glowSizeScaled, 0.0, max(distToOval, 0.0));
     glowField = pow(glowField, 1.5) * glowIntensityScaled;
 
-    float3 colorWithGlow = rippleColor * breathe + glowColor * glowField;
+    // Добавляем градиент от центра к краям: центр - glowColor, края - edgeColor
+    float edgeFactor = smoothstep(0.0, 0.4, dist); // 0 в центре, 1 на краях
+    float3 finalGlowColor = mix(glowColor, edgeColor, edgeFactor);
+    
+    float rayCountSafe = max(rayCountParam, 1.0);
+    float raySharpnessSafe = max(raySharpnessParam, 1.0);
+    float rayPhase = angle * rayCountSafe + time * raySpeedParam;
+    float rayPattern = abs(sin(rayPhase));
+    rayPattern = pow(rayPattern, raySharpnessSafe);
+    float rayRadial = smoothstep(0.18, 0.32, dist) * (1.0 - smoothstep(0.55, 0.9, dist));
+    float rayEnergy = rayIntensityParam * 0.4 * (0.6 + 0.4 * energy) * (1.0 + pulse * 0.25);
+    float rayField = rayPattern * rayRadial * rayEnergy;
+    float3 rayColor = mix(glowColor, edgeColor, 0.6);
+
+    float3 colorWithGlow = rippleColor * breathe + finalGlowColor * glowField + rayColor * rayField;
     float3 colorBeforeFade = mix(colorWithGlow, ovalColor, ovalMask);
 
     float fadeToBackground = smoothstep(0.35, 0.7, dist);
     float3 finalColor = mix(colorBeforeFade, backgroundColor, fadeToBackground);
+
+    float shockElapsed = shock.x;
+    float shockDuration = max(shock.y, 0.001);
+    float shockWidth = shock.z;
+    float shockIntensity = shock.w;
+    if (shockElapsed >= 0.0 && shockElapsed <= shockDuration) {
+        float shockT = clamp(shockElapsed / shockDuration, 0.0, 1.0);
+        // Accelerate at start, slow down near the brightest point
+        shockT = pow(shockT, 0.6);
+        float coreRadius = max(coreWidth, coreHeight) * 1.1;
+        float shockPos = mix(0.0, coreRadius * 1.6, shockT);
+        float shockWidthScaled = max(shockWidth, 0.01) * coreRadius;
+        float edgeDist = max(distToOval, 0.0);
+        float band = 1.0 - smoothstep(0.0, shockWidthScaled, abs(edgeDist - shockPos));
+        band = smoothstep(0.0, 1.0, band);
+        float edgeFade = 1.0 - smoothstep(0.35, 0.7, dist);
+        band *= edgeFade;
+        float3 shockColor = mix(glowColor, edgeColor, 0.5);
+        finalColor += shockColor * band * shockIntensity;
+    }
 
     float noiseScale = 1.0 / max(noiseSizeParam, 0.001);
     float noiseField = hash21(position * noiseScale);

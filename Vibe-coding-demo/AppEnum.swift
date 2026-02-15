@@ -3,6 +3,7 @@ import Foundation
 /// Central registry of launchable mini-projects.
 enum AppProject: String, CaseIterable, Hashable, Identifiable {
     // Imported from product-avatar-picker
+    case charity
     case avatarSettings
     case notificationCenter
     case notificationCenterPulseLike
@@ -17,6 +18,8 @@ enum AppProject: String, CaseIterable, Hashable, Identifiable {
 
     var title: String {
         switch self {
+        case .charity:
+            return "Благотворительность"
         case .avatarSettings:
             return "Avatar Settings"
         case .notificationCenter:
@@ -37,6 +40,8 @@ enum AppProject: String, CaseIterable, Hashable, Identifiable {
 
     var subtitle: String {
         switch self {
+        case .charity:
+            return "Charity flow with shader and bottom sheet"
         case .avatarSettings:
             return "Product avatar demo"
         case .notificationCenter:

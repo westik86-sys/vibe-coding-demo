@@ -22,8 +22,12 @@ struct ContentView: View {
             .navigationTitle("Showcase App")
             .navigationDestination(for: AppProject.self) { project in
                 switch project {
+                case .particleEffectPocMain:
+                    ParticleEffectPocMainView()
                 case .charity:
                     CharityStandaloneContainerView()
+                case .report:
+                    ReportLaunchView()
                 case .avatarSettings:
                     ProductAvatarView()
                 case .notificationCenter:
@@ -34,8 +38,6 @@ struct ContentView: View {
                     NCInAppView()
                 case .envelope:
                     EnvelopeView()
-                case .particleEffectPocMain:
-                    ParticleEffectPocMainView()
 
                 // IMPORTANT: When you add Project 2 to AppProject,
                 // also add its destination here:

@@ -22,12 +22,8 @@ struct ContentView: View {
             .navigationTitle("Showcase App")
             .navigationDestination(for: AppProject.self) { project in
                 switch project {
-                case .testProject:
-                    TestProjectView()
                 case .avatarSettings:
                     ProductAvatarView()
-                case .inap:
-                    InapView()
                 case .notificationCenter:
                     NotificationCenterView()
                 case .notificationCenterPulseLike:

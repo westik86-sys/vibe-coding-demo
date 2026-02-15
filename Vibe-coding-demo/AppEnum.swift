@@ -2,11 +2,8 @@ import Foundation
 
 /// Central registry of launchable mini-projects.
 enum AppProject: String, CaseIterable, Hashable, Identifiable {
-    case testProject
-
     // Imported from product-avatar-picker
     case avatarSettings
-    case inap
     case notificationCenter
     case notificationCenterPulseLike
     case ncInap
@@ -20,12 +17,8 @@ enum AppProject: String, CaseIterable, Hashable, Identifiable {
 
     var title: String {
         switch self {
-        case .testProject:
-            return "Test Project"
         case .avatarSettings:
             return "Avatar Settings"
-        case .inap:
-            return "InApp"
         case .notificationCenter:
             return "Notification Center"
         case .notificationCenterPulseLike:
@@ -44,12 +37,8 @@ enum AppProject: String, CaseIterable, Hashable, Identifiable {
 
     var subtitle: String {
         switch self {
-        case .testProject:
-            return "Dummy experiment"
         case .avatarSettings:
             return "Product avatar demo"
-        case .inap:
-            return "InApp message interactions"
         case .notificationCenter:
             return "Dynamic Island-like notification center"
         case .notificationCenterPulseLike:

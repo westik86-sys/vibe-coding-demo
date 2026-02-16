@@ -63,6 +63,7 @@ struct ReportLaunchView: View {
         .navigationTitle("Report")
         .navigationBarTitleDisplayMode(.inline)
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.userDidTakeScreenshotNotification)) { _ in
+            guard !isResolvingScreenshot else { return }
             Task { @MainActor in
                 await resolveCapturedScreenshot()
             }
@@ -1470,4 +1471,3 @@ private class PassThroughView: UIView {
         return false
     }
 }
-

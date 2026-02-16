@@ -11,6 +11,7 @@ enum AppProject: String, CaseIterable, Hashable, Identifiable {
     case notificationCenterPulseLike
     case ncInap
     case envelope
+    case pullToRefresh
 
     // Add "Project 2" here later, for example:
     // case project2
@@ -35,6 +36,8 @@ enum AppProject: String, CaseIterable, Hashable, Identifiable {
             return "NC + InApp"
         case .envelope:
             return "Envelope"
+        case .pullToRefresh:
+            return "Pull to Refresh"
         // Add title mapping for "Project 2" here:
         // case .project2: return "Project 2"
         }
@@ -58,6 +61,8 @@ enum AppProject: String, CaseIterable, Hashable, Identifiable {
             return "Notification center integrated with InApp"
         case .envelope:
             return "Envelope animation prototype"
+        case .pullToRefresh:
+            return "List refresh interaction demo"
         // Add subtitle mapping for "Project 2" here:
         // case .project2: return "Your next mini-project"
         }

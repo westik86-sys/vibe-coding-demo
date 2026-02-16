@@ -38,6 +38,8 @@ struct ContentView: View {
                     NCInAppView()
                 case .envelope:
                     EnvelopeView()
+                case .pullToRefresh:
+                    PullToRefreshView()
 
                 // IMPORTANT: When you add Project 2 to AppProject,
                 // also add its destination here:

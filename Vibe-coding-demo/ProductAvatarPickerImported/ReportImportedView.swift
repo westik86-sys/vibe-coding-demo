@@ -55,7 +55,7 @@ struct ReportLaunchView: View {
                 .buttonStyle(.plain)
                 .frame(maxWidth: .infinity, alignment: .trailing)
                 .padding(.trailing, 16)
-                .padding(.bottom, 220)
+                .padding(.bottom, 78)
                 .opacity(capturedScreenshot == nil ? 0 : 1)
                 .animation(.easeInOut(duration: 0.2), value: capturedScreenshot != nil)
             }
@@ -560,7 +560,7 @@ struct ReportView: View {
                     .frame(width: cardSize.width, height: cardSize.height)
                     .clipped()
             } else {
-                VStack(spacing: 8) {
+                VStack(spacing: 0) {
                     Text("+")
                         .font(.system(size: 40 * contentScale, weight: .light))
                         .foregroundColor(Color(red: 66 / 255, green: 139 / 255, blue: 249 / 255))

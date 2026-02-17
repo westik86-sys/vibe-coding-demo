@@ -65,6 +65,7 @@
 			);
 			name = "Vibe-coding-demo";
 			packageProductDependencies = (
+				5CFCA002C0D3100000000001 /* RefreshControlKit */,
 			);
 			productName = "Vibe-coding-demo";
 			productReference = 2DAF0FED2F3F0C000059F6DD /* Vibe-coding-demo.app */;
@@ -94,6 +95,9 @@
 			);
 			mainGroup = 2DAF0FE42F3F0C000059F6DD;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				5CFCA001C0D3100000000001 /* XCRemoteSwiftPackageReference "RefreshControlKit" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2DAF0FEE2F3F0C000059F6DD /* Products */;
 			projectDirPath = "";
@@ -123,6 +127,17 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		5CFCA001C0D3100000000001 /* XCRemoteSwiftPackageReference "RefreshControlKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/hirotakan/RefreshControlKit.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.0.3;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCBuildConfiguration section */
 		2DAF0FF62F3F0C010059F6DD /* Debug */ = {
@@ -336,6 +351,14 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		5CFCA002C0D3100000000001 /* RefreshControlKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5CFCA001C0D3100000000001 /* XCRemoteSwiftPackageReference "RefreshControlKit" */;
+			productName = RefreshControlKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 2DAF0FE52F3F0C000059F6DD /* Project object */;
 }

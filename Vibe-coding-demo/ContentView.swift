@@ -40,6 +40,8 @@ struct ContentView: View {
                     EnvelopeView()
                 case .pullToRefresh:
                     PullToRefreshView()
+                case .pullToRefreshUIKit:
+                    PullToRefreshUIKitView()
 
                 // IMPORTANT: When you add Project 2 to AppProject,
                 // also add its destination here:

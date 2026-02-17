@@ -12,6 +12,7 @@ enum AppProject: String, CaseIterable, Hashable, Identifiable {
     case ncInap
     case envelope
     case pullToRefresh
+    case pullToRefreshUIKit
 
     // Add "Project 2" here later, for example:
     // case project2
@@ -37,7 +38,9 @@ enum AppProject: String, CaseIterable, Hashable, Identifiable {
         case .envelope:
             return "Envelope"
         case .pullToRefresh:
-            return "Pull to Refresh"
+            return "Pull to Refresh (SwiftUI)"
+        case .pullToRefreshUIKit:
+            return "Pull to Refresh (UIKit)"
         // Add title mapping for "Project 2" here:
         // case .project2: return "Project 2"
         }
@@ -63,6 +66,8 @@ enum AppProject: String, CaseIterable, Hashable, Identifiable {
             return "Envelope animation prototype"
         case .pullToRefresh:
             return "List refresh interaction demo"
+        case .pullToRefreshUIKit:
+            return "UIRefreshControl-based pull to refresh demo"
         // Add subtitle mapping for "Project 2" here:
         // case .project2: return "Your next mini-project"
         }

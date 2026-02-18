@@ -4,7 +4,7 @@ import RefreshControlKit
 import Lottie
 
 struct PullToRefreshUIKitView: View {
-    @State private var settings = PullToRefreshSettings()
+    @State private var settings = PullToRefreshSettingsStorage.load()
     @State private var isShowingSettings = false
 
     var body: some View {
@@ -22,6 +22,9 @@ struct PullToRefreshUIKitView: View {
             }
             .sheet(isPresented: $isShowingSettings) {
                 PullToRefreshSettingsView(settings: $settings)
+            }
+            .onChange(of: settings) { newValue in
+                PullToRefreshSettingsStorage.save(newValue)
             }
     }
 }
@@ -184,6 +187,12 @@ private struct PullToRefreshSettingsView: View {
                         TextField("Status text", text: $settings.statusText)
                     }
                 }
+
+                Section {
+                    Button("Reset to defaults", role: .destructive) {
+                        settings = PullToRefreshSettings()
+                    }
+                }
             }
             .navigationTitle("Pull-to-Refresh Settings")
             .navigationBarTitleDisplayMode(.inline)
@@ -198,8 +207,8 @@ private struct PullToRefreshSettingsView: View {
     }
 }
 
-private struct PullToRefreshSettings: Equatable {
-    enum LayoutOption: String, CaseIterable, Identifiable {
+private struct PullToRefreshSettings: Equatable, Codable {
+    enum LayoutOption: String, CaseIterable, Identifiable, Codable {
         case top
         case bottom
 
@@ -224,7 +233,7 @@ private struct PullToRefreshSettings: Equatable {
         }
     }
 
-    enum TriggerEventOption: String, CaseIterable, Identifiable {
+    enum TriggerEventOption: String, CaseIterable, Identifiable, Codable {
         case dragging
         case released
 
@@ -249,7 +258,7 @@ private struct PullToRefreshSettings: Equatable {
         }
     }
 
-    enum LoopModeOption: String, CaseIterable, Identifiable {
+    enum LoopModeOption: String, CaseIterable, Identifiable, Codable {
         case loop
         case playOnce
 
@@ -294,6 +303,25 @@ private struct PullToRefreshSettings: Equatable {
         let height = useCustomTriggerHeight ? CGFloat(triggerHeight) : nil
         let trigger = RefreshControl.Configuration.Trigger(height: height, event: triggerEvent.refreshEvent)
         return RefreshControl.Configuration(layout: layout.refreshLayout, trigger: trigger)
+    }
+}
+
+private enum PullToRefreshSettingsStorage {
+    private static let key = "pullToRefreshUIKit.settings"
+
+    static func load() -> PullToRefreshSettings {
+        guard
+            let data = UserDefaults.standard.data(forKey: key),
+            let settings = try? JSONDecoder().decode(PullToRefreshSettings.self, from: data)
+        else {
+            return PullToRefreshSettings()
+        }
+        return settings
+    }
+
+    static func save(_ settings: PullToRefreshSettings) {
+        guard let data = try? JSONEncoder().encode(settings) else { return }
+        UserDefaults.standard.set(data, forKey: key)
     }
 }
 

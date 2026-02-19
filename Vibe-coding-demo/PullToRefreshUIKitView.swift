@@ -2,6 +2,7 @@ import SwiftUI
 import UIKit
 import RefreshControlKit
 import Lottie
+import ImageIO
 
 struct PullToRefreshUIKitView: View {
     @State private var settings = PullToRefreshSettingsStorage.load()
@@ -131,7 +132,8 @@ private struct PullToRefreshSettingsView: View {
 
                     TextField("Preset 1 animation name", text: $settings.preset1AnimationName)
                     TextField("Preset 2 animation name", text: $settings.preset2AnimationName)
-                    Text("Current animation: \(settings.activeAnimationName).json")
+                    TextField("Preset 3 GIF name", text: $settings.preset3AnimationName)
+                    Text("Current animation: \(settings.activeAnimationFileName)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -267,6 +269,8 @@ private struct PullToRefreshSettingsView: View {
             settings.indicatorHeight = 140
             settings.animationSize = 88
             settings.showStatusText = false
+        case .preset3:
+            break
         }
     }
 }
@@ -299,6 +303,7 @@ private struct PullToRefreshSettings: Equatable, Codable {
     enum PresetOption: String, CaseIterable, Identifiable, Codable {
         case preset1
         case preset2
+        case preset3
 
         var id: String { rawValue }
 
@@ -308,6 +313,8 @@ private struct PullToRefreshSettings: Equatable, Codable {
                 return "Preset 1"
             case .preset2:
                 return "Preset 2"
+            case .preset3:
+                return "Preset 3"
             }
         }
     }
@@ -437,11 +444,29 @@ private struct PullToRefreshSettings: Equatable, Codable {
             loopMode: .loop
         )
 
+        static let preset3Default = PresetConfig(
+            animationName: "Preset3.gif",
+            layout: .top,
+            triggerEvent: .dragging,
+            useCustomTriggerHeight: false,
+            triggerHeight: 64,
+            refreshDuration: 1.2,
+            indicatorHeight: 64,
+            animationSize: 30,
+            horizontalSpacing: 8,
+            verticalInset: 10,
+            scrubWithPull: false,
+            showStatusText: true,
+            statusText: "Обновляем...",
+            loopMode: .loop
+        )
+
     }
 
     var selectedPreset: PresetOption = .preset1
     var preset1: PresetConfig = .preset1Default
     var preset2: PresetConfig = .preset2Default
+    var preset3: PresetConfig = .preset3Default
 
     private var activePresetConfig: PresetConfig {
         get {
@@ -450,6 +475,8 @@ private struct PullToRefreshSettings: Equatable, Codable {
                 return preset1
             case .preset2:
                 return preset2
+            case .preset3:
+                return preset3
             }
         }
         set {
@@ -458,6 +485,8 @@ private struct PullToRefreshSettings: Equatable, Codable {
                 preset1 = newValue
             case .preset2:
                 preset2 = newValue
+            case .preset3:
+                preset3 = newValue
             }
         }
     }
@@ -470,6 +499,11 @@ private struct PullToRefreshSettings: Equatable, Codable {
     var preset2AnimationName: String {
         get { preset2.animationName }
         set { preset2.animationName = newValue }
+    }
+
+    var preset3AnimationName: String {
+        get { preset3.animationName }
+        set { preset3.animationName = newValue }
     }
 
     var layout: LayoutOption {
@@ -589,16 +623,32 @@ private struct PullToRefreshSettings: Equatable, Codable {
         }
     }
 
-    var activeAnimationName: String {
+    var activeAnimationFileName: String {
         let rawName = activePresetConfig.animationName
         let trimmed = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
-            return "Coin without Glow"
+            return "Coin without Glow.json"
+        }
+        return trimmed
+    }
+
+    var activeAnimationName: String {
+        let trimmed = activeAnimationFileName
+        if trimmed.lowercased().hasSuffix(".gif") {
+            return trimmed
         }
         if trimmed.lowercased().hasSuffix(".json") {
             return String(trimmed.dropLast(5))
         }
         return trimmed
+    }
+
+    var activeGifName: String? {
+        let trimmed = activeAnimationFileName
+        if trimmed.lowercased().hasSuffix(".gif") {
+            return String(trimmed.dropLast(4))
+        }
+        return nil
     }
 
     var refreshConfiguration: RefreshControl.Configuration {
@@ -649,6 +699,8 @@ private enum PullToRefreshSettingsStorage {
                 migrated.preset1 = legacyConfig
             case .preset2:
                 migrated.preset2 = legacyConfig
+            case .preset3:
+                migrated.preset3 = legacyConfig
             }
             return migrated
         }
@@ -700,6 +752,12 @@ private final class PullToRefreshIndicatorView: UIView, RefreshControlView {
         view.backgroundBehavior = .pauseAndRestore
         return view
     }()
+    private let gifImageView: UIImageView = {
+        let view = UIImageView()
+        view.contentMode = .scaleAspectFit
+        view.isHidden = true
+        return view
+    }()
 
     private let titleLabel: UILabel = {
         let label = UILabel()
@@ -728,19 +786,28 @@ private final class PullToRefreshIndicatorView: UIView, RefreshControlView {
 
     func didScroll(_ progress: RefreshControl.Progress) {
         guard !isRefreshing, settings.scrubWithPull else { return }
+        guard settings.activeGifName == nil else { return }
         animationView.currentProgress = progress.value
     }
 
     func willRefresh() {
         isRefreshing = true
-        animationView.currentProgress = 0
-        animationView.play()
+        if settings.activeGifName != nil {
+            gifImageView.startAnimating()
+        } else {
+            animationView.currentProgress = 0
+            animationView.play()
+        }
     }
 
     func didRefresh() {
         isRefreshing = false
-        animationView.stop()
-        animationView.currentProgress = 0
+        if settings.activeGifName != nil {
+            gifImageView.stopAnimating()
+        } else {
+            animationView.stop()
+            animationView.currentProgress = 0
+        }
     }
 
     private func configureLayout() {
@@ -748,9 +815,11 @@ private final class PullToRefreshIndicatorView: UIView, RefreshControlView {
         stack.alignment = .center
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.addArrangedSubview(animationView)
+        stack.addArrangedSubview(gifImageView)
         stack.addArrangedSubview(titleLabel)
 
         animationView.translatesAutoresizingMaskIntoConstraints = false
+        gifImageView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
 
         let sizeConstraint = animationView.widthAnchor.constraint(equalToConstant: CGFloat(settings.animationSize))
@@ -766,6 +835,8 @@ private final class PullToRefreshIndicatorView: UIView, RefreshControlView {
         NSLayoutConstraint.activate([
             sizeConstraint,
             heightConstraint,
+            gifImageView.widthAnchor.constraint(equalTo: animationView.widthAnchor),
+            gifImageView.heightAnchor.constraint(equalTo: animationView.heightAnchor),
             stack.centerXAnchor.constraint(equalTo: centerXAnchor),
             stack.centerYAnchor.constraint(equalTo: centerYAnchor),
             topConstraint,
@@ -791,6 +862,23 @@ private final class PullToRefreshIndicatorView: UIView, RefreshControlView {
     }
 
     private func configureAnimation() {
+        if let gifName = settings.activeGifName, let gif = GifFramesLoader.load(named: gifName) {
+            animationView.stop()
+            animationView.isHidden = true
+            gifImageView.isHidden = false
+            gifImageView.image = gif.poster
+            gifImageView.animationImages = gif.frames
+            gifImageView.animationDuration = gif.duration
+            gifImageView.animationRepeatCount = 0
+            return
+        }
+
+        gifImageView.stopAnimating()
+        gifImageView.animationImages = nil
+        gifImageView.image = nil
+        gifImageView.isHidden = true
+        animationView.isHidden = false
+
         guard
             let path = Bundle.main.path(forResource: settings.activeAnimationName, ofType: "json"),
             let animation = LottieAnimation.filepath(path)
@@ -798,6 +886,79 @@ private final class PullToRefreshIndicatorView: UIView, RefreshControlView {
             return
         }
         animationView.animation = animation
+    }
+}
+
+private enum GifFramesLoader {
+    struct GifContent {
+        let poster: UIImage
+        let frames: [UIImage]
+        let duration: TimeInterval
+    }
+
+    static func load(named: String) -> GifContent? {
+        let expectedName = named + ".gif"
+        let url = Bundle.main.url(forResource: named, withExtension: "gif")
+            ?? Bundle.main.urls(forResourcesWithExtension: "gif", subdirectory: nil)?
+                .first(where: { $0.lastPathComponent.caseInsensitiveCompare(expectedName) == .orderedSame })
+            ?? bundledGifURL(named: expectedName)
+
+        guard
+            let url,
+            let source = CGImageSourceCreateWithURL(url as CFURL, nil)
+        else {
+            return nil
+        }
+
+        let count = CGImageSourceGetCount(source)
+        guard count > 0 else { return nil }
+
+        var frames: [UIImage] = []
+        var totalDuration: TimeInterval = 0
+
+        for index in 0..<count {
+            guard let cgImage = CGImageSourceCreateImageAtIndex(source, index, nil) else { continue }
+            let frameDuration = frameDelay(source: source, index: index)
+            totalDuration += frameDuration
+            frames.append(UIImage(cgImage: cgImage))
+        }
+
+        guard let poster = frames.first else { return nil }
+        if totalDuration <= 0 {
+            totalDuration = Double(frames.count) * 0.1
+        }
+        return GifContent(poster: poster, frames: frames, duration: totalDuration)
+    }
+
+    private static func bundledGifURL(named expectedName: String) -> URL? {
+        guard let resourceURL = Bundle.main.resourceURL else { return nil }
+
+        let enumerator = FileManager.default.enumerator(
+            at: resourceURL,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsHiddenFiles]
+        )
+
+        while let next = enumerator?.nextObject() as? URL {
+            guard next.lastPathComponent.caseInsensitiveCompare(expectedName) == .orderedSame else { continue }
+            return next
+        }
+
+        return nil
+    }
+
+    private static func frameDelay(source: CGImageSource, index: Int) -> TimeInterval {
+        guard
+            let properties = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any],
+            let gifProps = properties[kCGImagePropertyGIFDictionary] as? [CFString: Any]
+        else {
+            return 0.1
+        }
+
+        let unclamped = gifProps[kCGImagePropertyGIFUnclampedDelayTime] as? Double
+        let clamped = gifProps[kCGImagePropertyGIFDelayTime] as? Double
+        let value = unclamped ?? clamped ?? 0.1
+        return value <= 0.01 ? 0.1 : value
     }
 }
 

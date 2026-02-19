@@ -1,0 +1,24 @@
+{
+  "originHash" : "c5e2090839227192300501d4657c6cc2e6c6ec111516faaa58c34d0e948afaa9",
+  "pins" : [
+    {
+      "identity" : "lottie-spm",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/airbnb/lottie-spm.git",
+      "state" : {
+        "revision" : "69faaefa7721fba9e434a52c16adf4329c9084db",
+        "version" : "4.6.0"
+      }
+    },
+    {
+      "identity" : "refreshcontrolkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/hirotakan/RefreshControlKit.git",
+      "state" : {
+        "revision" : "9b29dbe175b9921c03f43f02f37d9e2ebe08eaf8",
+        "version" : "0.0.3"
+      }
+    }
+  ],
+  "version" : 3
+}

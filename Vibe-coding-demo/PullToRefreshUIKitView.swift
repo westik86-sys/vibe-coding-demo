@@ -136,6 +136,9 @@ private struct PullToRefreshSettingsView: View {
                     Text("Current animation: \(settings.activeAnimationFileName)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    Text("Drop new GIF files into Vibe-coding-demo/GIFs and type file name here")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
 
                 Section("RefreshControlKit") {
@@ -210,6 +213,22 @@ private struct PullToRefreshSettingsView: View {
                         range: 0 ... 24,
                         step: 1,
                         valueText: { "\(Int($0)) pt" }
+                    )
+
+                    SliderSettingRow(
+                        title: "Appear from progress",
+                        value: $settings.appearStartProgress,
+                        range: 0 ... 1,
+                        step: 0.05,
+                        valueText: { "\((Int(($0 * 100).rounded())))%" }
+                    )
+
+                    SliderSettingRow(
+                        title: "Fade out from progress",
+                        value: $settings.fadeOutStartProgress,
+                        range: 0 ... 1,
+                        step: 0.05,
+                        valueText: { "\((Int(($0 * 100).rounded())))%" }
                     )
 
                     Picker("Loop mode", selection: $settings.loopMode) {
@@ -405,10 +424,87 @@ private struct PullToRefreshSettings: Equatable, Codable {
         var animationSize: Double
         var horizontalSpacing: Double
         var verticalInset: Double
+        var appearStartProgress: Double
+        var fadeOutStartProgress: Double
         var scrubWithPull: Bool
         var showStatusText: Bool
         var statusText: String
         var loopMode: LoopModeOption
+
+        enum CodingKeys: String, CodingKey {
+            case animationName
+            case layout
+            case triggerEvent
+            case useCustomTriggerHeight
+            case triggerHeight
+            case refreshDuration
+            case indicatorHeight
+            case animationSize
+            case horizontalSpacing
+            case verticalInset
+            case appearStartProgress
+            case fadeOutStartProgress
+            case scrubWithPull
+            case showStatusText
+            case statusText
+            case loopMode
+        }
+
+        init(
+            animationName: String,
+            layout: LayoutOption,
+            triggerEvent: TriggerEventOption,
+            useCustomTriggerHeight: Bool,
+            triggerHeight: Double,
+            refreshDuration: Double,
+            indicatorHeight: Double,
+            animationSize: Double,
+            horizontalSpacing: Double,
+            verticalInset: Double,
+            appearStartProgress: Double,
+            fadeOutStartProgress: Double,
+            scrubWithPull: Bool,
+            showStatusText: Bool,
+            statusText: String,
+            loopMode: LoopModeOption
+        ) {
+            self.animationName = animationName
+            self.layout = layout
+            self.triggerEvent = triggerEvent
+            self.useCustomTriggerHeight = useCustomTriggerHeight
+            self.triggerHeight = triggerHeight
+            self.refreshDuration = refreshDuration
+            self.indicatorHeight = indicatorHeight
+            self.animationSize = animationSize
+            self.horizontalSpacing = horizontalSpacing
+            self.verticalInset = verticalInset
+            self.appearStartProgress = appearStartProgress
+            self.fadeOutStartProgress = fadeOutStartProgress
+            self.scrubWithPull = scrubWithPull
+            self.showStatusText = showStatusText
+            self.statusText = statusText
+            self.loopMode = loopMode
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            animationName = try container.decode(String.self, forKey: .animationName)
+            layout = try container.decode(LayoutOption.self, forKey: .layout)
+            triggerEvent = try container.decode(TriggerEventOption.self, forKey: .triggerEvent)
+            useCustomTriggerHeight = try container.decode(Bool.self, forKey: .useCustomTriggerHeight)
+            triggerHeight = try container.decode(Double.self, forKey: .triggerHeight)
+            refreshDuration = try container.decode(Double.self, forKey: .refreshDuration)
+            indicatorHeight = try container.decode(Double.self, forKey: .indicatorHeight)
+            animationSize = try container.decode(Double.self, forKey: .animationSize)
+            horizontalSpacing = try container.decode(Double.self, forKey: .horizontalSpacing)
+            verticalInset = try container.decode(Double.self, forKey: .verticalInset)
+            appearStartProgress = try container.decodeIfPresent(Double.self, forKey: .appearStartProgress) ?? 0.1
+            fadeOutStartProgress = try container.decodeIfPresent(Double.self, forKey: .fadeOutStartProgress) ?? 0.1
+            scrubWithPull = try container.decode(Bool.self, forKey: .scrubWithPull)
+            showStatusText = try container.decode(Bool.self, forKey: .showStatusText)
+            statusText = try container.decode(String.self, forKey: .statusText)
+            loopMode = try container.decode(LoopModeOption.self, forKey: .loopMode)
+        }
 
         static let preset1Default = PresetConfig(
             animationName: "Coin without Glow",
@@ -421,6 +517,8 @@ private struct PullToRefreshSettings: Equatable, Codable {
             animationSize: 60,
             horizontalSpacing: 0,
             verticalInset: 10,
+            appearStartProgress: 0.1,
+            fadeOutStartProgress: 0.1,
             scrubWithPull: true,
             showStatusText: true,
             statusText: "Обновляем...",
@@ -433,19 +531,21 @@ private struct PullToRefreshSettings: Equatable, Codable {
             triggerEvent: .dragging,
             useCustomTriggerHeight: false,
             triggerHeight: 64,
-            refreshDuration: 0,
-            indicatorHeight: 64,
-            animationSize: 30,
+            refreshDuration: 1.2,
+            indicatorHeight: 140,
+            animationSize: 88,
             horizontalSpacing: 8,
             verticalInset: 10,
+            appearStartProgress: 0.1,
+            fadeOutStartProgress: 0.1,
             scrubWithPull: true,
-            showStatusText: true,
+            showStatusText: false,
             statusText: "Обновляем...",
             loopMode: .loop
         )
 
         static let preset3Default = PresetConfig(
-            animationName: "Preset3.gif",
+            animationName: "money1.gif",
             layout: .top,
             triggerEvent: .dragging,
             useCustomTriggerHeight: false,
@@ -455,6 +555,8 @@ private struct PullToRefreshSettings: Equatable, Codable {
             animationSize: 30,
             horizontalSpacing: 8,
             verticalInset: 10,
+            appearStartProgress: 0.1,
+            fadeOutStartProgress: 0.1,
             scrubWithPull: false,
             showStatusText: true,
             statusText: "Обновляем...",
@@ -596,6 +698,24 @@ private struct PullToRefreshSettings: Equatable, Codable {
         }
     }
 
+    var appearStartProgress: Double {
+        get { activePresetConfig.appearStartProgress }
+        set {
+            var config = activePresetConfig
+            config.appearStartProgress = newValue
+            activePresetConfig = config
+        }
+    }
+
+    var fadeOutStartProgress: Double {
+        get { activePresetConfig.fadeOutStartProgress }
+        set {
+            var config = activePresetConfig
+            config.fadeOutStartProgress = newValue
+            activePresetConfig = config
+        }
+    }
+
     var showStatusText: Bool {
         get { activePresetConfig.showStatusText }
         set {
@@ -648,6 +768,9 @@ private struct PullToRefreshSettings: Equatable, Codable {
         if trimmed.lowercased().hasSuffix(".gif") {
             return String(trimmed.dropLast(4))
         }
+        if selectedPreset == .preset3 && !trimmed.lowercased().hasSuffix(".json") {
+            return trimmed
+        }
         return nil
     }
 
@@ -688,6 +811,8 @@ private enum PullToRefreshSettingsStorage {
                 animationSize: legacy.animationSize,
                 horizontalSpacing: legacy.horizontalSpacing,
                 verticalInset: legacy.verticalInset,
+                appearStartProgress: legacy.appearStartProgress,
+                fadeOutStartProgress: legacy.fadeOutStartProgress,
                 scrubWithPull: legacy.scrubWithPull,
                 showStatusText: legacy.showStatusText,
                 statusText: legacy.statusText,
@@ -727,6 +852,8 @@ private struct LegacyPullToRefreshSettings: Codable {
     var animationSize: Double = 30
     var horizontalSpacing: Double = 8
     var verticalInset: Double = 10
+    var appearStartProgress: Double = 0.1
+    var fadeOutStartProgress: Double = 0.1
     var scrubWithPull = true
     var showStatusText = true
     var statusText = "Обновляем..."
@@ -734,6 +861,11 @@ private struct LegacyPullToRefreshSettings: Codable {
 }
 
 private final class PullToRefreshIndicatorView: UIView, RefreshControlView {
+    private enum ScrollPhase {
+        case appearing
+        case fading
+    }
+
     private var settings: PullToRefreshSettings {
         didSet {
             applySettings()
@@ -745,6 +877,9 @@ private final class PullToRefreshIndicatorView: UIView, RefreshControlView {
     private var animationHeightConstraint: NSLayoutConstraint?
     private var stackTopConstraint: NSLayoutConstraint?
     private var stackBottomConstraint: NSLayoutConstraint?
+    private var lastPullProgress: CGFloat = 0
+    private var scrollPhase: ScrollPhase = .appearing
+    private var usesGifAnimation = false
 
     private let animationView: LottieAnimationView = {
         let view = LottieAnimationView()
@@ -785,14 +920,28 @@ private final class PullToRefreshIndicatorView: UIView, RefreshControlView {
     }
 
     func didScroll(_ progress: RefreshControl.Progress) {
+        let currentProgress = progress.value
+        let delta = currentProgress - lastPullProgress
+        let epsilon: CGFloat = 0.001
+        if delta > epsilon {
+            scrollPhase = .appearing
+        } else if delta < -epsilon {
+            scrollPhase = .fading
+        }
+
+        updateAnimationVisibility(for: currentProgress, phase: scrollPhase)
+        lastPullProgress = currentProgress
+
         guard !isRefreshing, settings.scrubWithPull else { return }
-        guard settings.activeGifName == nil else { return }
-        animationView.currentProgress = progress.value
+        guard !usesGifAnimation else { return }
+        animationView.currentProgress = currentProgress
     }
 
     func willRefresh() {
         isRefreshing = true
-        if settings.activeGifName != nil {
+        scrollPhase = .appearing
+        updateAnimationVisibility(for: 1, phase: .appearing)
+        if usesGifAnimation {
             gifImageView.startAnimating()
         } else {
             animationView.currentProgress = 0
@@ -802,12 +951,14 @@ private final class PullToRefreshIndicatorView: UIView, RefreshControlView {
 
     func didRefresh() {
         isRefreshing = false
-        if settings.activeGifName != nil {
+        scrollPhase = .fading
+        if usesGifAnimation {
             gifImageView.stopAnimating()
         } else {
             animationView.stop()
             animationView.currentProgress = 0
         }
+        updateAnimationVisibility(for: lastPullProgress, phase: .fading)
     }
 
     private func configureLayout() {
@@ -855,6 +1006,7 @@ private final class PullToRefreshIndicatorView: UIView, RefreshControlView {
         titleLabel.text = settings.statusText
         titleLabel.isHidden = !settings.showStatusText
         configureAnimation()
+        updateAnimationVisibility(for: lastPullProgress, phase: scrollPhase)
 
         invalidateIntrinsicContentSize()
         setNeedsLayout()
@@ -863,6 +1015,7 @@ private final class PullToRefreshIndicatorView: UIView, RefreshControlView {
 
     private func configureAnimation() {
         if let gifName = settings.activeGifName, let gif = GifFramesLoader.load(named: gifName) {
+            usesGifAnimation = true
             animationView.stop()
             animationView.isHidden = true
             gifImageView.isHidden = false
@@ -878,6 +1031,7 @@ private final class PullToRefreshIndicatorView: UIView, RefreshControlView {
         gifImageView.image = nil
         gifImageView.isHidden = true
         animationView.isHidden = false
+        usesGifAnimation = false
 
         guard
             let path = Bundle.main.path(forResource: settings.activeAnimationName, ofType: "json"),
@@ -886,6 +1040,41 @@ private final class PullToRefreshIndicatorView: UIView, RefreshControlView {
             return
         }
         animationView.animation = animation
+    }
+
+    private func updateAnimationVisibility(for progress: CGFloat, phase: ScrollPhase) {
+        if isRefreshing {
+            animationView.alpha = 1
+            gifImageView.alpha = 1
+            return
+        }
+
+        let appearStart = max(0, min(CGFloat(settings.appearStartProgress), 1))
+        let fadeOutStart = max(0, min(CGFloat(settings.fadeOutStartProgress), 1))
+        let normalizedProgress = max(0, min(progress, 1))
+
+        let alpha: CGFloat
+        switch phase {
+        case .appearing:
+            if appearStart >= 1 {
+                alpha = normalizedProgress >= 1 ? 1 : 0
+            } else if normalizedProgress <= appearStart {
+                alpha = 0
+            } else {
+                alpha = (normalizedProgress - appearStart) / (1 - appearStart)
+            }
+        case .fading:
+            if fadeOutStart <= 0 {
+                alpha = normalizedProgress
+            } else if normalizedProgress >= fadeOutStart {
+                alpha = 1
+            } else {
+                alpha = normalizedProgress / fadeOutStart
+            }
+        }
+
+        animationView.alpha = alpha
+        gifImageView.alpha = alpha
     }
 }
 
@@ -897,8 +1086,18 @@ private enum GifFramesLoader {
     }
 
     static func load(named: String) -> GifContent? {
-        let expectedName = named + ".gif"
-        let url = Bundle.main.url(forResource: named, withExtension: "gif")
+        let normalizedName: String
+        if named.lowercased().hasSuffix(".gif") {
+            normalizedName = String(named.dropLast(4))
+        } else {
+            normalizedName = named
+        }
+
+        let expectedName = normalizedName + ".gif"
+        let url = Bundle.main.url(forResource: normalizedName, withExtension: "gif", subdirectory: "GIFs")
+            ?? Bundle.main.urls(forResourcesWithExtension: "gif", subdirectory: "GIFs")?
+                .first(where: { $0.lastPathComponent.caseInsensitiveCompare(expectedName) == .orderedSame })
+            ?? Bundle.main.url(forResource: normalizedName, withExtension: "gif")
             ?? Bundle.main.urls(forResourcesWithExtension: "gif", subdirectory: nil)?
                 .first(where: { $0.lastPathComponent.caseInsensitiveCompare(expectedName) == .orderedSame })
             ?? bundledGifURL(named: expectedName)

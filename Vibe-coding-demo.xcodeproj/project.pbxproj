@@ -8,15 +8,15 @@
 
 /* Begin PBXBuildFile section */
 		2D19EDF82F4605480086BF45 /* RefreshControlKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5CFCA002C0D3100000000001 /* RefreshControlKit */; };
+		4B0A10014C0A100100000001 /* Vibe-coding-demo/GIFs in Resources */ = {isa = PBXBuildFile; fileRef = 4B0A10034C0A100100000001 /* Vibe-coding-demo/GIFs */; };
 		4B0A10024C0A100100000001 /* Vibe-coding-demo/Dino Loading.json in Resources */ = {isa = PBXBuildFile; fileRef = 4B0A10044C0A100100000001 /* Vibe-coding-demo/Dino Loading.json */; };
-		4B0A10054C0A100100000001 /* Vibe-coding-demo/money1.gif in Resources */ = {isa = PBXBuildFile; fileRef = 4B0A10064C0A100100000001 /* Vibe-coding-demo/money1.gif */; };
 		6A11B002AA11000000000001 /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = 6A11B001AA11000000000001 /* Lottie */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		2DAF0FED2F3F0C000059F6DD /* Vibe-coding-demo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Vibe-coding-demo.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4B0A10034C0A100100000001 /* Vibe-coding-demo/GIFs */ = {isa = PBXFileReference; lastKnownFileType = folder; path = "Vibe-coding-demo/GIFs"; sourceTree = "<group>"; };
 		4B0A10044C0A100100000001 /* Vibe-coding-demo/Dino Loading.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Vibe-coding-demo/Dino Loading.json"; sourceTree = "<group>"; };
-		4B0A10064C0A100100000001 /* Vibe-coding-demo/money1.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = "Vibe-coding-demo/money1.gif"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -44,8 +44,8 @@
 			isa = PBXGroup;
 			children = (
 				2DAF0FEF2F3F0C000059F6DD /* Vibe-coding-demo */,
+				4B0A10034C0A100100000001 /* Vibe-coding-demo/GIFs */,
 				4B0A10044C0A100100000001 /* Vibe-coding-demo/Dino Loading.json */,
-				4B0A10064C0A100100000001 /* Vibe-coding-demo/money1.gif */,
 				2DAF0FEE2F3F0C000059F6DD /* Products */,
 			);
 			sourceTree = "<group>";
@@ -128,8 +128,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4B0A10014C0A100100000001 /* Vibe-coding-demo/GIFs in Resources */,
 				4B0A10024C0A100100000001 /* Vibe-coding-demo/Dino Loading.json in Resources */,
-				4B0A10054C0A100100000001 /* Vibe-coding-demo/money1.gif in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

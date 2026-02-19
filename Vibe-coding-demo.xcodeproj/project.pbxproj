@@ -8,11 +8,13 @@
 
 /* Begin PBXBuildFile section */
 		2D19EDF82F4605480086BF45 /* RefreshControlKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5CFCA002C0D3100000000001 /* RefreshControlKit */; };
+		4B0A10024C0A100100000001 /* Vibe-coding-demo/Dino Loading.json in Resources */ = {isa = PBXBuildFile; fileRef = 4B0A10044C0A100100000001 /* Vibe-coding-demo/Dino Loading.json */; };
 		6A11B002AA11000000000001 /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = 6A11B001AA11000000000001 /* Lottie */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		2DAF0FED2F3F0C000059F6DD /* Vibe-coding-demo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Vibe-coding-demo.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4B0A10044C0A100100000001 /* Vibe-coding-demo/Dino Loading.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Vibe-coding-demo/Dino Loading.json"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -40,6 +42,7 @@
 			isa = PBXGroup;
 			children = (
 				2DAF0FEF2F3F0C000059F6DD /* Vibe-coding-demo */,
+				4B0A10044C0A100100000001 /* Vibe-coding-demo/Dino Loading.json */,
 				2DAF0FEE2F3F0C000059F6DD /* Products */,
 			);
 			sourceTree = "<group>";
@@ -122,6 +125,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4B0A10024C0A100100000001 /* Vibe-coding-demo/Dino Loading.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -351,14 +355,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		6A11B003AA11000000000001 /* XCRemoteSwiftPackageReference "lottie-spm" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/airbnb/lottie-spm.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 4.6.0;
-			};
-		};
 		5CFCA001C0D3100000000001 /* XCRemoteSwiftPackageReference "RefreshControlKit" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/hirotakan/RefreshControlKit.git";
@@ -367,18 +363,26 @@
 				minimumVersion = 0.0.3;
 			};
 		};
+		6A11B003AA11000000000001 /* XCRemoteSwiftPackageReference "lottie-spm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/airbnb/lottie-spm.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.6.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		6A11B001AA11000000000001 /* Lottie */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 6A11B003AA11000000000001 /* XCRemoteSwiftPackageReference "lottie-spm" */;
-			productName = Lottie;
-		};
 		5CFCA002C0D3100000000001 /* RefreshControlKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 5CFCA001C0D3100000000001 /* XCRemoteSwiftPackageReference "RefreshControlKit" */;
 			productName = RefreshControlKit;
+		};
+		6A11B001AA11000000000001 /* Lottie */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6A11B003AA11000000000001 /* XCRemoteSwiftPackageReference "lottie-spm" */;
+			productName = Lottie;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

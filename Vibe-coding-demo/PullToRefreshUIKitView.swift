@@ -121,6 +121,21 @@ private struct PullToRefreshSettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section("Presets") {
+                    Picker("Preset", selection: $settings.selectedPreset) {
+                        ForEach(PullToRefreshSettings.PresetOption.allCases) { option in
+                            Text(option.title).tag(option)
+                        }
+                    }
+                    .pickerStyle(.menu)
+
+                    TextField("Preset 1 animation name", text: $settings.preset1AnimationName)
+                    TextField("Preset 2 animation name", text: $settings.preset2AnimationName)
+                    Text("Current animation: \(settings.activeAnimationName).json")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
                 Section("RefreshControlKit") {
                     Picker("Layout", selection: $settings.layout) {
                         ForEach(PullToRefreshSettings.LayoutOption.allCases) { option in
@@ -138,40 +153,62 @@ private struct PullToRefreshSettingsView: View {
 
                     Toggle("Custom trigger height", isOn: $settings.useCustomTriggerHeight)
                     if settings.useCustomTriggerHeight {
-                        Slider(value: $settings.triggerHeight, in: 24 ... 180, step: 1)
-                        Text("Trigger height: \(Int(settings.triggerHeight)) pt")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        SliderSettingRow(
+                            title: "Trigger height",
+                            value: $settings.triggerHeight,
+                            range: 24 ... 180,
+                            step: 1,
+                            valueText: { "\(Int($0)) pt" }
+                        )
                     }
                 }
 
                 Section("Refresh") {
-                    Slider(value: $settings.refreshDuration, in: 0 ... 5, step: 0.1)
-                    Text("Duration: \(settings.refreshDuration.formatted(.number.precision(.fractionLength(1)))) s")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    SliderSettingRow(
+                        title: "Duration",
+                        value: $settings.refreshDuration,
+                        range: 0 ... 5,
+                        step: 0.1,
+                        valueText: { $0.formatted(.number.precision(.fractionLength(1))) + " s" },
+                        disabled: settings.selectedPreset == .preset1 || settings.selectedPreset == .preset2
+                    )
                 }
 
                 Section("Indicator") {
-                    Slider(value: $settings.indicatorHeight, in: 40 ... 140, step: 1)
-                    Text("Height: \(Int(settings.indicatorHeight)) pt")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    SliderSettingRow(
+                        title: "Height",
+                        value: $settings.indicatorHeight,
+                        range: 40 ... 140,
+                        step: 1,
+                        valueText: { "\(Int($0)) pt" },
+                        disabled: settings.selectedPreset == .preset2
+                    )
 
-                    Slider(value: $settings.animationSize, in: 16 ... 88, step: 1)
-                    Text("Animation size: \(Int(settings.animationSize)) pt")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    SliderSettingRow(
+                        title: "Animation size",
+                        value: $settings.animationSize,
+                        range: 16 ... 88,
+                        step: 1,
+                        valueText: { "\(Int($0)) pt" },
+                        disabled: settings.selectedPreset == .preset1 || settings.selectedPreset == .preset2
+                    )
 
-                    Slider(value: $settings.horizontalSpacing, in: 0 ... 24, step: 1)
-                    Text("Spacing: \(Int(settings.horizontalSpacing)) pt")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    SliderSettingRow(
+                        title: "Spacing",
+                        value: $settings.horizontalSpacing,
+                        range: 0 ... 24,
+                        step: 1,
+                        valueText: { "\(Int($0)) pt" },
+                        disabled: settings.selectedPreset == .preset1
+                    )
 
-                    Slider(value: $settings.verticalInset, in: 0 ... 24, step: 1)
-                    Text("Vertical inset: \(Int(settings.verticalInset)) pt")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    SliderSettingRow(
+                        title: "Vertical inset",
+                        value: $settings.verticalInset,
+                        range: 0 ... 24,
+                        step: 1,
+                        valueText: { "\(Int($0)) pt" }
+                    )
 
                     Picker("Loop mode", selection: $settings.loopMode) {
                         ForEach(PullToRefreshSettings.LoopModeOption.allCases) { option in
@@ -182,8 +219,13 @@ private struct PullToRefreshSettingsView: View {
 
                     Toggle("Scrub with pull", isOn: $settings.scrubWithPull)
                     Toggle("Show status text", isOn: $settings.showStatusText)
+                        .disabled(settings.selectedPreset == .preset2)
 
-                    if settings.showStatusText {
+                    if settings.selectedPreset == .preset2 {
+                        Text("Text is disabled for Preset 2")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else if settings.showStatusText {
                         TextField("Status text", text: $settings.statusText)
                     }
                 }
@@ -196,6 +238,14 @@ private struct PullToRefreshSettingsView: View {
             }
             .navigationTitle("Pull-to-Refresh Settings")
             .navigationBarTitleDisplayMode(.inline)
+            .listRowSeparator(.hidden)
+            .listSectionSeparator(.hidden)
+            .onAppear {
+                applyPresetConstraints()
+            }
+            .onChange(of: settings.selectedPreset) { _ in
+                applyPresetConstraints()
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") {
@@ -205,9 +255,63 @@ private struct PullToRefreshSettingsView: View {
             }
         }
     }
+
+    private func applyPresetConstraints() {
+        switch settings.selectedPreset {
+        case .preset1:
+            settings.refreshDuration = 1.2
+            settings.animationSize = 60
+            settings.horizontalSpacing = 0
+        case .preset2:
+            settings.refreshDuration = 1.2
+            settings.indicatorHeight = 140
+            settings.animationSize = 88
+            settings.showStatusText = false
+        }
+    }
+}
+
+private struct SliderSettingRow: View {
+    let title: String
+    @Binding var value: Double
+    let range: ClosedRange<Double>
+    let step: Double
+    let valueText: (Double) -> String
+    var disabled: Bool = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(title)
+                Spacer()
+                Text(valueText(value))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Slider(value: $value, in: range, step: step)
+                .disabled(disabled)
+        }
+        .listRowSeparator(.hidden)
+    }
 }
 
 private struct PullToRefreshSettings: Equatable, Codable {
+    enum PresetOption: String, CaseIterable, Identifiable, Codable {
+        case preset1
+        case preset2
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .preset1:
+                return "Preset 1"
+            case .preset2:
+                return "Preset 2"
+            }
+        }
+    }
+
     enum LayoutOption: String, CaseIterable, Identifiable, Codable {
         case top
         case bottom
@@ -283,21 +387,219 @@ private struct PullToRefreshSettings: Equatable, Codable {
         }
     }
 
-    var layout: LayoutOption = .top
-    var triggerEvent: TriggerEventOption = .dragging
-    var useCustomTriggerHeight = false
-    var triggerHeight: Double = 64
-    var refreshDuration: Double = 0
+    struct PresetConfig: Equatable, Codable {
+        var animationName: String
+        var layout: LayoutOption
+        var triggerEvent: TriggerEventOption
+        var useCustomTriggerHeight: Bool
+        var triggerHeight: Double
+        var refreshDuration: Double
+        var indicatorHeight: Double
+        var animationSize: Double
+        var horizontalSpacing: Double
+        var verticalInset: Double
+        var scrubWithPull: Bool
+        var showStatusText: Bool
+        var statusText: String
+        var loopMode: LoopModeOption
 
-    var indicatorHeight: Double = 64
-    var animationSize: Double = 30
-    var horizontalSpacing: Double = 8
-    var verticalInset: Double = 10
-    var scrubWithPull = true
+        static let preset1Default = PresetConfig(
+            animationName: "Coin without Glow",
+            layout: .top,
+            triggerEvent: .dragging,
+            useCustomTriggerHeight: false,
+            triggerHeight: 64,
+            refreshDuration: 1.2,
+            indicatorHeight: 64,
+            animationSize: 60,
+            horizontalSpacing: 0,
+            verticalInset: 10,
+            scrubWithPull: true,
+            showStatusText: true,
+            statusText: "Обновляем...",
+            loopMode: .loop
+        )
 
-    var showStatusText = true
-    var statusText = "Обновляем..."
-    var loopMode: LoopModeOption = .loop
+        static let preset2Default = PresetConfig(
+            animationName: "Dino Loading",
+            layout: .top,
+            triggerEvent: .dragging,
+            useCustomTriggerHeight: false,
+            triggerHeight: 64,
+            refreshDuration: 0,
+            indicatorHeight: 64,
+            animationSize: 30,
+            horizontalSpacing: 8,
+            verticalInset: 10,
+            scrubWithPull: true,
+            showStatusText: true,
+            statusText: "Обновляем...",
+            loopMode: .loop
+        )
+
+    }
+
+    var selectedPreset: PresetOption = .preset1
+    var preset1: PresetConfig = .preset1Default
+    var preset2: PresetConfig = .preset2Default
+
+    private var activePresetConfig: PresetConfig {
+        get {
+            switch selectedPreset {
+            case .preset1:
+                return preset1
+            case .preset2:
+                return preset2
+            }
+        }
+        set {
+            switch selectedPreset {
+            case .preset1:
+                preset1 = newValue
+            case .preset2:
+                preset2 = newValue
+            }
+        }
+    }
+
+    var preset1AnimationName: String {
+        get { preset1.animationName }
+        set { preset1.animationName = newValue }
+    }
+
+    var preset2AnimationName: String {
+        get { preset2.animationName }
+        set { preset2.animationName = newValue }
+    }
+
+    var layout: LayoutOption {
+        get { activePresetConfig.layout }
+        set {
+            var config = activePresetConfig
+            config.layout = newValue
+            activePresetConfig = config
+        }
+    }
+
+    var triggerEvent: TriggerEventOption {
+        get { activePresetConfig.triggerEvent }
+        set {
+            var config = activePresetConfig
+            config.triggerEvent = newValue
+            activePresetConfig = config
+        }
+    }
+
+    var useCustomTriggerHeight: Bool {
+        get { activePresetConfig.useCustomTriggerHeight }
+        set {
+            var config = activePresetConfig
+            config.useCustomTriggerHeight = newValue
+            activePresetConfig = config
+        }
+    }
+
+    var triggerHeight: Double {
+        get { activePresetConfig.triggerHeight }
+        set {
+            var config = activePresetConfig
+            config.triggerHeight = newValue
+            activePresetConfig = config
+        }
+    }
+
+    var refreshDuration: Double {
+        get { activePresetConfig.refreshDuration }
+        set {
+            var config = activePresetConfig
+            config.refreshDuration = newValue
+            activePresetConfig = config
+        }
+    }
+
+    var indicatorHeight: Double {
+        get { activePresetConfig.indicatorHeight }
+        set {
+            var config = activePresetConfig
+            config.indicatorHeight = newValue
+            activePresetConfig = config
+        }
+    }
+
+    var animationSize: Double {
+        get { activePresetConfig.animationSize }
+        set {
+            var config = activePresetConfig
+            config.animationSize = newValue
+            activePresetConfig = config
+        }
+    }
+
+    var horizontalSpacing: Double {
+        get { activePresetConfig.horizontalSpacing }
+        set {
+            var config = activePresetConfig
+            config.horizontalSpacing = newValue
+            activePresetConfig = config
+        }
+    }
+
+    var verticalInset: Double {
+        get { activePresetConfig.verticalInset }
+        set {
+            var config = activePresetConfig
+            config.verticalInset = newValue
+            activePresetConfig = config
+        }
+    }
+
+    var scrubWithPull: Bool {
+        get { activePresetConfig.scrubWithPull }
+        set {
+            var config = activePresetConfig
+            config.scrubWithPull = newValue
+            activePresetConfig = config
+        }
+    }
+
+    var showStatusText: Bool {
+        get { activePresetConfig.showStatusText }
+        set {
+            var config = activePresetConfig
+            config.showStatusText = newValue
+            activePresetConfig = config
+        }
+    }
+
+    var statusText: String {
+        get { activePresetConfig.statusText }
+        set {
+            var config = activePresetConfig
+            config.statusText = newValue
+            activePresetConfig = config
+        }
+    }
+
+    var loopMode: LoopModeOption {
+        get { activePresetConfig.loopMode }
+        set {
+            var config = activePresetConfig
+            config.loopMode = newValue
+            activePresetConfig = config
+        }
+    }
+
+    var activeAnimationName: String {
+        let rawName = activePresetConfig.animationName
+        let trimmed = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            return "Coin without Glow"
+        }
+        if trimmed.lowercased().hasSuffix(".json") {
+            return String(trimmed.dropLast(5))
+        }
+        return trimmed
+    }
 
     var refreshConfiguration: RefreshControl.Configuration {
         let height = useCustomTriggerHeight ? CGFloat(triggerHeight) : nil
@@ -310,19 +612,73 @@ private enum PullToRefreshSettingsStorage {
     private static let key = "pullToRefreshUIKit.settings"
 
     static func load() -> PullToRefreshSettings {
-        guard
-            let data = UserDefaults.standard.data(forKey: key),
-            let settings = try? JSONDecoder().decode(PullToRefreshSettings.self, from: data)
-        else {
+        guard let data = UserDefaults.standard.data(forKey: key) else {
             return PullToRefreshSettings()
         }
-        return settings
+
+        if let settings = try? JSONDecoder().decode(PullToRefreshSettings.self, from: data) {
+            return settings
+        }
+
+        // Backward compatibility for older flat settings model.
+        if let legacy = try? JSONDecoder().decode(LegacyPullToRefreshSettings.self, from: data) {
+            var migrated = PullToRefreshSettings()
+            migrated.selectedPreset = legacy.selectedPreset
+            migrated.preset1.animationName = legacy.preset1AnimationName
+            migrated.preset2.animationName = legacy.preset2AnimationName == "Coin without Glow" ? "Dino Loading" : legacy.preset2AnimationName
+
+            let legacyConfig = PullToRefreshSettings.PresetConfig(
+                animationName: legacy.selectedPreset == .preset1 ? legacy.preset1AnimationName : migrated.preset2.animationName,
+                layout: legacy.layout,
+                triggerEvent: legacy.triggerEvent,
+                useCustomTriggerHeight: legacy.useCustomTriggerHeight,
+                triggerHeight: legacy.triggerHeight,
+                refreshDuration: legacy.refreshDuration,
+                indicatorHeight: legacy.indicatorHeight,
+                animationSize: legacy.animationSize,
+                horizontalSpacing: legacy.horizontalSpacing,
+                verticalInset: legacy.verticalInset,
+                scrubWithPull: legacy.scrubWithPull,
+                showStatusText: legacy.showStatusText,
+                statusText: legacy.statusText,
+                loopMode: legacy.loopMode
+            )
+
+            switch legacy.selectedPreset {
+            case .preset1:
+                migrated.preset1 = legacyConfig
+            case .preset2:
+                migrated.preset2 = legacyConfig
+            }
+            return migrated
+        }
+
+        return PullToRefreshSettings()
     }
 
     static func save(_ settings: PullToRefreshSettings) {
         guard let data = try? JSONEncoder().encode(settings) else { return }
         UserDefaults.standard.set(data, forKey: key)
     }
+}
+
+private struct LegacyPullToRefreshSettings: Codable {
+    var layout: PullToRefreshSettings.LayoutOption = .top
+    var selectedPreset: PullToRefreshSettings.PresetOption = .preset1
+    var preset1AnimationName = "Coin without Glow"
+    var preset2AnimationName = "Dino Loading"
+    var triggerEvent: PullToRefreshSettings.TriggerEventOption = .dragging
+    var useCustomTriggerHeight = false
+    var triggerHeight: Double = 64
+    var refreshDuration: Double = 0
+    var indicatorHeight: Double = 64
+    var animationSize: Double = 30
+    var horizontalSpacing: Double = 8
+    var verticalInset: Double = 10
+    var scrubWithPull = true
+    var showStatusText = true
+    var statusText = "Обновляем..."
+    var loopMode: PullToRefreshSettings.LoopModeOption = .loop
 }
 
 private final class PullToRefreshIndicatorView: UIView, RefreshControlView {
@@ -427,6 +783,7 @@ private final class PullToRefreshIndicatorView: UIView, RefreshControlView {
 
         titleLabel.text = settings.statusText
         titleLabel.isHidden = !settings.showStatusText
+        configureAnimation()
 
         invalidateIntrinsicContentSize()
         setNeedsLayout()
@@ -435,7 +792,7 @@ private final class PullToRefreshIndicatorView: UIView, RefreshControlView {
 
     private func configureAnimation() {
         guard
-            let path = Bundle.main.path(forResource: "Coin without Glow", ofType: "json"),
+            let path = Bundle.main.path(forResource: settings.activeAnimationName, ofType: "json"),
             let animation = LottieAnimation.filepath(path)
         else {
             return

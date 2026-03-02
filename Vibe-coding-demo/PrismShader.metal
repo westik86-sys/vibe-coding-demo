@@ -4,69 +4,62 @@ using namespace metal;
 #include <SwiftUI/SwiftUI_Metal.h>
 using namespace SwiftUI;
 
-static inline float saturatef(float x) { return clamp(x, 0.0, 1.0); }
+// stitchable layer effect:
+// position      — координата текущего пикселя
+// args          — SwiftUI layer (.sampleNearest / .sampleLinear)
+// center (vec2) — точка касания
+// intensity (f) — 0…1
 
-[[ stitchable ]]
-half4 prismRipple(float2 position,
-                  SwiftUI::Layer layer,
-                  float2 center,
-                  float intensity,
-                  float time)
-{
-    half4 src = layer.sample(position);
-    if (intensity <= 0.0001) return src;
+[[ stitchable ]] half4 prism(
+    float2 position,
+    SwiftUI::Layer layer,
+    float2 center,
+    float intensity
+) {
+    // Вектор от центра касания к текущему пикселю
+    float2 delta = position - center;
+    float dist = length(delta);
 
-    float2 d = position - center;
-    float dist = length(d);
+    // Радиус линзы
+    float radius = 120.0;
 
-    // Радиус влияния как в видео (примерно “пятно под пальцем”)
-    float radius = 220.0;
+    // Нормализованное расстояние (0 в центре, 1 на краю)
+    float t = saturate(dist / radius);
 
-    // Мягкая маска
-    float m = smoothstep(radius, 0.0, dist) * intensity;
-    if (m <= 0.0001) return src;
+    // Гладкий спад от центра к краю (перевёрнутый smoothstep)
+    float falloff = 1.0 - smoothstep(0.0, 1.0, t);
 
-    float2 dir = (dist > 1e-4) ? (d / dist) : float2(0.0, 0.0);
+    // Общая сила эффекта
+    float strength = intensity * falloff;
 
-    // ====== КЛЮЧ “1:1” — анимированная волна по расстоянию ======
-    // Частота/скорость подобраны так, чтобы появлялись “гребни” как на ролике.
-    float freq  = 0.145;   // плотность колец
-    float speed = 9.2;     // скорость “бегущей” волны
+    // === Lens distortion (barrel) ===
+    // Искривляем координаты к центру — эффект выпуклой линзы
+    float lensStrength = 0.35;
+    float2 lensOffset = -delta * strength * lensStrength * (1.0 - t);
+    float2 distortedPos = position + lensOffset;
 
-    // Волна: sin(dist*freq - time*speed)
-    float wave = sin(dist * freq - time * speed);
+    // === Chromatic aberration (RGB split) ===
+    // Каждый канал смещается на разную величину вдоль delta
+    float chromatic = 12.0 * strength; // макс. пиксельный сдвиг
+    float2 dir = (dist > 0.001) ? (delta / dist) : float2(0.0);
 
-    // Чем ближе к центру — тем сильнее
-    float falloff = (1.0 - dist / radius);
-    falloff = falloff * falloff; // чуть резче в центре
+    float2 posR = distortedPos + dir * chromatic;
+    float2 posG = distortedPos;
+    float2 posB = distortedPos - dir * chromatic;
 
-    // Базовая “линза”
-    float lens = m * falloff * 20.0;
+    half4 colR = layer.sample(posR);
+    half4 colG = layer.sample(posG);
+    half4 colB = layer.sample(posB);
 
-    // Амплитуда ряби (это даёт “полосатость”)
-    float ripple = m * falloff * wave * 28.0;
+    half4 result;
+    result.r = colR.r;
+    result.g = colG.g;
+    result.b = colB.b;
+    result.a = max(max(colR.a, colG.a), colB.a);
 
-    // Комбинируем: линза + волна
-    float2 offset = dir * (lens + ripple);
+    // Лёгкий яркостный блик в центре линзы (specular-подобный)
+    float highlight = pow(falloff, 3.0) * 0.18 * intensity;
+    result.rgb += half3(highlight);
 
-    // ====== PRISM / RGB split ======
-    // На видео видно, что гребни уходят в сине-красный.
-    // Делаем разные смещения для R и B + небольшую “дисперсию” от wave.
-    float ca = m * falloff * (8.0 + 10.0 * abs(wave)); // сильнее на гребнях
-    float2 caVec = dir * ca;
-
-    half4 base = layer.sample(position + offset);
-
-    half r = layer.sample(position + offset + caVec * 0.95).r;
-    half g = base.g;
-    half b = layer.sample(position + offset - caVec * 1.10).b;
-
-    // Доп. “спектральный гребень” — усиливает именно полосы (как на видео)
-    float crest = saturatef(abs(wave)) * m * falloff;
-    half3 crestTint = half3(half(0.35 * crest), half(0.10 * crest), half(0.45 * crest));
-
-    half4 outc = half4(r, g, b, base.a);
-    outc.rgb += crestTint;
-
-    return outc;
+    return result;
 }

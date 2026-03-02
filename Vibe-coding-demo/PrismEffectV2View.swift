@@ -65,16 +65,11 @@ struct PrismEffectV2View: View {
                 Color.black.ignoresSafeArea()
 
                 Text("""
-                Hello, world! Hello,
-                world! Hello, world!
-                Hello, world! Hello,
-                world! Hello, world!
-                Hello, world! Hello,
-                world! Hello, world!
-                Hello, world! Hello,
-                world! Hello, world!
+                БОЖЕ ХРАНИ Т-БАНК 🙏🏦 ЗА ЗАРПЛАТУ 🙏❤️ ПУСТЬ ПРИХОДИТ ВОВРЕМЯ ⏰✅ ПУСТЬ НЕ ПРОПАДАЕТ 📵🚫 СПАСИБО НАШИМ ДИЗАЙНЕРАМ  ЧТО СДЕЛАЛИ КРАСИВО И ПОНЯТНО 🎨📲 ДАЙ НАМ КЭШБЭК И ТЕРПЕНИЕ ❤️🙏 АНГЕЛА ХРАНИТЕЛЯ КАЖДОМУ ИЗ ВАС 🙏❤️ ПУСТЬ Т-БАНК  ДЕРЖИТСЯ КРЕПКО 🛡✨
+                ПУСТЬ СЕРВЕРА СТОЯТ 🖥🧱
+                ПУСТЬ НЕ ПАДАЕТ НИЧЕГО 📉🚫
                 """)
-                .font(.system(size: 34, weight: .bold, design: .rounded))
+                .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
                 .padding(28)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

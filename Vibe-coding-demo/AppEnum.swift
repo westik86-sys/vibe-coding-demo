@@ -13,6 +13,7 @@ enum AppProject: String, CaseIterable, Hashable, Identifiable {
     case envelope
     case pullToRefresh
     case pullToRefreshUIKit
+    case prismEffect
 
     // Add "Project 2" here later, for example:
     // case project2
@@ -41,6 +42,8 @@ enum AppProject: String, CaseIterable, Hashable, Identifiable {
             return "Pull to Refresh (SwiftUI)"
         case .pullToRefreshUIKit:
             return "Pull to Refresh (UIKit)"
+        case .prismEffect:
+            return "Prism-Effect"
         // Add title mapping for "Project 2" here:
         // case .project2: return "Project 2"
         }
@@ -68,6 +71,8 @@ enum AppProject: String, CaseIterable, Hashable, Identifiable {
             return "List refresh interaction demo"
         case .pullToRefreshUIKit:
             return "UIRefreshControl-based pull to refresh demo"
+        case .prismEffect:
+            return "Animated prism gradient effect"
         // Add subtitle mapping for "Project 2" here:
         // case .project2: return "Your next mini-project"
         }

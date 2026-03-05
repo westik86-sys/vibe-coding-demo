@@ -46,6 +46,8 @@ struct ContentView: View {
                     PrismEffectView()
                 case .prismEffectV2:
                     PrismEffectV2View()
+                case .frostUI:
+                    FrostUIView()
                 }
             }
         }

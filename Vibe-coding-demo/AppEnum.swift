@@ -15,6 +15,7 @@ enum AppProject: String, CaseIterable, Hashable, Identifiable {
     case pullToRefreshUIKit
     case prismEffect
     case prismEffectV2
+    case frostUI
 
     // Add "Project 2" here later, for example:
     // case project2
@@ -47,6 +48,8 @@ enum AppProject: String, CaseIterable, Hashable, Identifiable {
             return "Prism-Effect"
         case .prismEffectV2:
             return "Prism-Effect-v2"
+        case .frostUI:
+            return "FrostUI"
         // Add title mapping for "Project 2" here:
         // case .project2: return "Project 2"
         }
@@ -78,6 +81,8 @@ enum AppProject: String, CaseIterable, Hashable, Identifiable {
             return "Animated prism gradient effect"
         case .prismEffectV2:
             return "Copy of Prism-Effect for further iteration"
+        case .frostUI:
+            return "Frosted glass UI playground"
         // Add subtitle mapping for "Project 2" here:
         // case .project2: return "Your next mini-project"
         }

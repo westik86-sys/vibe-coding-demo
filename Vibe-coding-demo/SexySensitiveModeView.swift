@@ -2,6 +2,7 @@ import SwiftUI
 
 private struct SexySensitiveModeSettings: Codable {
     private enum CodingKeys: String, CodingKey {
+        case texts
         case textOne
         case textTwo
         case textThree
@@ -15,9 +16,7 @@ private struct SexySensitiveModeSettings: Codable {
         case cursorCharacter
     }
 
-    var textOne: String = "Текст 1"
-    var textTwo: String = "Текст 2"
-    var textThree: String = "Текст 3"
+    var texts: [String] = ["Текст 1", "Текст 2", "Текст 3"]
     var currentTextIndex: Int = 0
     var animationSpeed: Double = 26
     var animationDelay: Double = 0.1
@@ -29,9 +28,7 @@ private struct SexySensitiveModeSettings: Codable {
     static let `default` = SexySensitiveModeSettings()
 
     init(
-        textOne: String = "Текст 1",
-        textTwo: String = "Текст 2",
-        textThree: String = "Текст 3",
+        texts: [String] = ["Текст 1", "Текст 2", "Текст 3"],
         currentTextIndex: Int = 0,
         animationSpeed: Double = 26,
         animationDelay: Double = 0.1,
@@ -40,10 +37,8 @@ private struct SexySensitiveModeSettings: Codable {
         randomCharset: String = "_!X$0-+*#",
         cursorCharacter: String = "_"
     ) {
-        self.textOne = textOne
-        self.textTwo = textTwo
-        self.textThree = textThree
-        self.currentTextIndex = max(0, min(currentTextIndex, 2))
+        self.texts = Self.normalizedTexts(texts)
+        self.currentTextIndex = max(0, min(currentTextIndex, self.texts.count - 1))
         self.animationSpeed = animationSpeed
         self.animationDelay = animationDelay
         self.phaseOneCycles = phaseOneCycles
@@ -54,13 +49,16 @@ private struct SexySensitiveModeSettings: Codable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-
-        textOne = try container.decodeIfPresent(String.self, forKey: .textOne) ?? Self.default.textOne
-        textTwo = try container.decodeIfPresent(String.self, forKey: .textTwo) ?? Self.default.textTwo
-        textThree = try container.decodeIfPresent(String.self, forKey: .textThree) ?? Self.default.textThree
+        let decodedTexts = try container.decodeIfPresent([String].self, forKey: .texts)
+        let legacyTexts = [
+            try container.decodeIfPresent(String.self, forKey: .textOne),
+            try container.decodeIfPresent(String.self, forKey: .textTwo),
+            try container.decodeIfPresent(String.self, forKey: .textThree),
+        ].compactMap { $0 }
+        texts = Self.normalizedTexts(decodedTexts ?? legacyTexts)
 
         if let currentTextIndex = try container.decodeIfPresent(Int.self, forKey: .currentTextIndex) {
-            self.currentTextIndex = max(0, min(currentTextIndex, 2))
+            self.currentTextIndex = max(0, min(currentTextIndex, texts.count - 1))
         } else if let showingFirstText = try container.decodeIfPresent(Bool.self, forKey: .showingFirstText) {
             self.currentTextIndex = showingFirstText ? 0 : 1
         } else {
@@ -77,9 +75,7 @@ private struct SexySensitiveModeSettings: Codable {
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(textOne, forKey: .textOne)
-        try container.encode(textTwo, forKey: .textTwo)
-        try container.encode(textThree, forKey: .textThree)
+        try container.encode(texts, forKey: .texts)
         try container.encode(currentTextIndex, forKey: .currentTextIndex)
         try container.encode(animationSpeed, forKey: .animationSpeed)
         try container.encode(animationDelay, forKey: .animationDelay)
@@ -87,6 +83,21 @@ private struct SexySensitiveModeSettings: Codable {
         try container.encode(phaseTwoFramesPerCharacter, forKey: .phaseTwoFramesPerCharacter)
         try container.encode(randomCharset, forKey: .randomCharset)
         try container.encode(cursorCharacter, forKey: .cursorCharacter)
+    }
+
+    static func normalizedTexts(_ texts: [String]) -> [String] {
+        let filtered = texts.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        if filtered.count >= 2 {
+            return filtered
+        }
+
+        if filtered.count == 1 {
+            return [filtered[0], "Текст 2"]
+        }
+
+        return Self.default.texts
     }
 }
 
@@ -101,9 +112,7 @@ struct SexySensitiveModeView: View {
     @State private var phaseTwoFramesPerCharacter: Int
     @State private var randomCharset: String
     @State private var cursorCharacter: String
-    @State private var textOne: String
-    @State private var textTwo: String
-    @State private var textThree: String
+    @State private var texts: [String]
     @State private var currentTextIndex: Int
     @State private var animationSourceText: String
     @State private var animationTargetText: String
@@ -116,14 +125,11 @@ struct SexySensitiveModeView: View {
         _phaseTwoFramesPerCharacter = State(initialValue: settings.phaseTwoFramesPerCharacter)
         _randomCharset = State(initialValue: settings.randomCharset)
         _cursorCharacter = State(initialValue: settings.cursorCharacter)
-        _textOne = State(initialValue: settings.textOne)
-        _textTwo = State(initialValue: settings.textTwo)
-        _textThree = State(initialValue: settings.textThree)
-        _currentTextIndex = State(initialValue: max(0, min(settings.currentTextIndex, 2)))
-        let texts = [settings.textOne, settings.textTwo, settings.textThree]
-        let safeIndex = max(0, min(settings.currentTextIndex, 2))
-        _animationSourceText = State(initialValue: texts[safeIndex])
-        _animationTargetText = State(initialValue: texts[(safeIndex + 1) % texts.count])
+        _texts = State(initialValue: settings.texts)
+        _currentTextIndex = State(initialValue: max(0, min(settings.currentTextIndex, settings.texts.count - 1)))
+        let safeIndex = max(0, min(settings.currentTextIndex, settings.texts.count - 1))
+        _animationSourceText = State(initialValue: settings.texts[safeIndex])
+        _animationTargetText = State(initialValue: settings.texts[(safeIndex + 1) % settings.texts.count])
     }
 
     var body: some View {
@@ -132,15 +138,7 @@ struct SexySensitiveModeView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 12) {
-                SpecialTextView(
-                    animationTargetText,
-                    initialText: animationSourceText,
-                    replayTrigger: animationRestartID,
-                    animateOnAppear: false,
-                    configuration: animationConfiguration
-                )
-                    .font(.system(size: 58, weight: .regular, design: .monospaced))
-                    .multilineTextAlignment(.center)
+                animatedPhraseView
             }
             .foregroundStyle(.white)
             .multilineTextAlignment(.center)
@@ -150,15 +148,7 @@ struct SexySensitiveModeView: View {
         .onAppear {
             syncDisplayedTexts()
         }
-        .onChange(of: textOne) { _, _ in
-            syncDisplayedTexts()
-            persistSettings()
-        }
-        .onChange(of: textTwo) { _, _ in
-            syncDisplayedTexts()
-            persistSettings()
-        }
-        .onChange(of: textThree) { _, _ in
+        .onChange(of: texts) { _, _ in
             syncDisplayedTexts()
             persistSettings()
         }
@@ -205,14 +195,20 @@ struct SexySensitiveModeView: View {
             NavigationStack {
                 Form {
                     Section("Text") {
-                        TextField("Text 1", text: $textOne, axis: .vertical)
-                            .lineLimit(2...6)
+                        ForEach(Array(texts.indices), id: \.self) { index in
+                            TextField("Text \(index + 1)", text: $texts[index], axis: .vertical)
+                                .lineLimit(2...6)
 
-                        TextField("Text 2", text: $textTwo, axis: .vertical)
-                            .lineLimit(2...6)
+                            if texts.count > 2 {
+                                Button("Delete Text \(index + 1)", role: .destructive) {
+                                    deleteText(at: index)
+                                }
+                            }
+                        }
 
-                        TextField("Text 3", text: $textThree, axis: .vertical)
-                            .lineLimit(2...6)
+                        Button("Add text") {
+                            addText()
+                        }
                     }
 
                     Section("Timing") {
@@ -273,14 +269,44 @@ struct SexySensitiveModeView: View {
         )
     }
 
+    private var animatedPhraseView: some View {
+        let sourceParts = splitAnimatedParts(animationSourceText)
+        let targetParts = splitAnimatedParts(animationTargetText)
+        let canAnimateOnlySuffix = sourceParts.prefix == targetParts.prefix
+
+        return Group {
+            if canAnimateOnlySuffix {
+                HStack(spacing: 0) {
+                    Text(sourceParts.prefix)
+
+                    SpecialTextView(
+                        targetParts.animatedPart,
+                        initialText: sourceParts.animatedPart,
+                        replayTrigger: animationRestartID,
+                        animateOnAppear: false,
+                        configuration: animationConfiguration
+                    )
+                }
+            } else {
+                SpecialTextView(
+                    animationTargetText,
+                    initialText: animationSourceText,
+                    replayTrigger: animationRestartID,
+                    animateOnAppear: false,
+                    configuration: animationConfiguration
+                )
+            }
+        }
+        .font(.system(size: 58, weight: .regular, design: .monospaced))
+        .multilineTextAlignment(.center)
+    }
+
     private func resetSettings() {
         let defaults = SexySensitiveModeSettings.default
-        textOne = defaults.textOne
-        textTwo = defaults.textTwo
-        textThree = defaults.textThree
+        texts = defaults.texts
         currentTextIndex = defaults.currentTextIndex
-        animationSourceText = defaults.textOne
-        animationTargetText = defaults.textTwo
+        animationSourceText = defaults.texts[0]
+        animationTargetText = defaults.texts[1]
         animationSpeed = defaults.animationSpeed
         animationDelay = defaults.animationDelay
         phaseOneCycles = defaults.phaseOneCycles
@@ -300,9 +326,7 @@ struct SexySensitiveModeView: View {
 
     private func persistSettings() {
         let settings = SexySensitiveModeSettings(
-            textOne: textOne,
-            textTwo: textTwo,
-            textThree: textThree,
+            texts: texts,
             currentTextIndex: currentTextIndex,
             animationSpeed: animationSpeed,
             animationDelay: animationDelay,
@@ -328,7 +352,38 @@ struct SexySensitiveModeView: View {
     }
 
     private var orderedTexts: [String] {
-        [textOne, textTwo, textThree]
+        SexySensitiveModeSettings.normalizedTexts(texts)
+    }
+
+    private func splitAnimatedParts(_ text: String) -> (prefix: String, animatedPart: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let splitIndex = trimmed.firstIndex(of: " ") else {
+            return ("", trimmed)
+        }
+
+        let nextIndex = trimmed.index(after: splitIndex)
+        let prefix = String(trimmed[..<nextIndex])
+        let suffix = String(trimmed[nextIndex...])
+        return (prefix, suffix)
+    }
+
+    private func addText() {
+        texts.append("Текст \(texts.count + 1)")
+    }
+
+    private func deleteText(at index: Int) {
+        guard texts.count > 2, texts.indices.contains(index) else { return }
+
+        texts.remove(at: index)
+
+        if currentTextIndex >= texts.count {
+            currentTextIndex = 0
+        } else if index < currentTextIndex {
+            currentTextIndex -= 1
+        }
+
+        syncDisplayedTexts()
+        persistSettings()
     }
 }
 

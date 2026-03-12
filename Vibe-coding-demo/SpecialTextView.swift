@@ -18,6 +18,9 @@ struct SpecialTextView: View {
     }
 
     let text: String
+    let initialText: String
+    let replayTrigger: UUID
+    let animateOnAppear: Bool
     let configuration: Configuration
 
     @State private var displayText: String
@@ -27,40 +30,66 @@ struct SpecialTextView: View {
 
     init(
         _ text: String,
+        initialText: String = "",
+        replayTrigger: UUID = UUID(),
+        animateOnAppear: Bool = true,
         configuration: Configuration = .default
     ) {
         self.text = text
+        self.initialText = initialText
+        self.replayTrigger = replayTrigger
+        self.animateOnAppear = animateOnAppear
         self.configuration = configuration
-        _displayText = State(initialValue: String(repeating: " ", count: text.count))
+        _displayText = State(initialValue: Self.normalizedDisplayText(initialText, to: max(text.count, initialText.count)))
     }
 
     var body: some View {
         ZStack(alignment: .leading) {
-            // Reserve the final text block size so the animated layer does not
-            // change layout while characters are shuffling.
+            // Reserve space for both states so switching between them does not
+            // reflow the animated layer.
+            Text(initialText)
+                .opacity(0)
+
             Text(text)
                 .opacity(0)
 
             Text(displayText)
         }
             .onAppear {
-                startAnimation()
+                if animateOnAppear {
+                    startAnimation()
+                } else {
+                    displayText = initialDisplayText
+                }
             }
             .onDisappear {
                 animationTask?.cancel()
                 animationTask = nil
             }
             .onChange(of: text) { _, _ in
+                resetToInitialState()
+            }
+            .onChange(of: initialText) { _, _ in
+                resetToInitialState()
+            }
+            .onChange(of: replayTrigger) { _, _ in
                 startAnimation()
             }
             .onChange(of: configuration) { _, _ in
-                startAnimation()
+                resetToInitialState()
             }
+    }
+
+    private func resetToInitialState() {
+        animationTask?.cancel()
+        displayText = initialDisplayText
+        currentPhase = .phase1
+        animationStep = 0
     }
 
     private func startAnimation() {
         animationTask?.cancel()
-        displayText = String(repeating: " ", count: text.count)
+        displayText = initialDisplayText
         currentPhase = .phase1
         animationStep = 0
 
@@ -72,6 +101,13 @@ struct SpecialTextView: View {
 
             guard !Task.isCancelled else { return }
 
+            guard initialDisplayText != finalDisplayText else {
+                await MainActor.run {
+                    displayText = finalDisplayText
+                }
+                return
+            }
+
             while !Task.isCancelled {
                 await MainActor.run {
                     switch currentPhase {
@@ -82,7 +118,7 @@ struct SpecialTextView: View {
                     }
                 }
 
-                if displayText == text {
+                if displayText == finalDisplayText {
                     break
                 }
 
@@ -92,13 +128,12 @@ struct SpecialTextView: View {
     }
 
     private func runPhase1() {
-        let maxSteps = max(text.count * max(configuration.phaseOneCycles, 1), 1)
-        let characters = Array(text)
+        let maxSteps = max(displayLength * max(configuration.phaseOneCycles, 1), 1)
 
         var chars: [Character] = []
-        chars.reserveCapacity(text.count)
+        chars.reserveCapacity(displayLength)
 
-        for index in 0..<characters.count {
+        for index in 0..<displayLength {
             let previous = index > 0 ? chars[index - 1] : nil
             chars.append(randomChar(previous: previous))
         }
@@ -114,12 +149,12 @@ struct SpecialTextView: View {
     }
 
     private func runPhase2() {
-        let characters = Array(text)
+        let characters = Array(finalDisplayText)
         let framesPerCharacter = max(configuration.phaseTwoFramesPerCharacter, 1)
         let revealedCount = animationStep / framesPerCharacter
 
         var chars: [Character] = []
-        chars.reserveCapacity(text.count)
+        chars.reserveCapacity(displayLength)
 
         for index in 0..<min(revealedCount, characters.count) {
             chars.append(characters[index])
@@ -130,7 +165,7 @@ struct SpecialTextView: View {
             chars.append(animationStep.isMultiple(of: framesPerCharacter) ? cursor : randomChar(previous: nil))
         }
 
-        while chars.count < characters.count {
+        while chars.count < displayLength {
             chars.append(randomChar(previous: chars.last))
         }
 
@@ -139,7 +174,7 @@ struct SpecialTextView: View {
         if animationStep < characters.count * framesPerCharacter - 1 {
             animationStep += 1
         } else {
-            displayText = text
+            displayText = finalDisplayText
         }
     }
 
@@ -157,6 +192,22 @@ struct SpecialTextView: View {
     private var cursorCharacter: Character {
         configuration.cursorCharacter.first ?? "_"
     }
+
+    private var displayLength: Int {
+        max(text.count, initialText.count)
+    }
+
+    private var initialDisplayText: String {
+        Self.normalizedDisplayText(initialText, to: displayLength)
+    }
+
+    private var finalDisplayText: String {
+        Self.normalizedDisplayText(text, to: displayLength)
+    }
+    private static func normalizedDisplayText(_ text: String, to length: Int) -> String {
+        guard text.count < length else { return text }
+        return text + String(repeating: " ", count: length - text.count)
+    }
 }
 
 #Preview {
@@ -164,6 +215,9 @@ struct SpecialTextView: View {
         Color.black.ignoresSafeArea()
         SpecialTextView(
             "Preview Text",
+            initialText: "Initial Text",
+            replayTrigger: UUID(),
+            animateOnAppear: false,
             configuration: .init(speed: 30)
         )
             .font(.system(size: 40, weight: .medium, design: .monospaced))

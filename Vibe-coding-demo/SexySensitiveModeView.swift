@@ -1,9 +1,24 @@
 import SwiftUI
 
 private struct SexySensitiveModeSettings: Codable {
+    private enum CodingKeys: String, CodingKey {
+        case textOne
+        case textTwo
+        case textThree
+        case currentTextIndex
+        case showingFirstText
+        case animationSpeed
+        case animationDelay
+        case phaseOneCycles
+        case phaseTwoFramesPerCharacter
+        case randomCharset
+        case cursorCharacter
+    }
+
     var textOne: String = "Текст 1"
     var textTwo: String = "Текст 2"
-    var showingFirstText: Bool = true
+    var textThree: String = "Текст 3"
+    var currentTextIndex: Int = 0
     var animationSpeed: Double = 26
     var animationDelay: Double = 0.1
     var phaseOneCycles: Int = 2
@@ -12,6 +27,67 @@ private struct SexySensitiveModeSettings: Codable {
     var cursorCharacter: String = "_"
 
     static let `default` = SexySensitiveModeSettings()
+
+    init(
+        textOne: String = "Текст 1",
+        textTwo: String = "Текст 2",
+        textThree: String = "Текст 3",
+        currentTextIndex: Int = 0,
+        animationSpeed: Double = 26,
+        animationDelay: Double = 0.1,
+        phaseOneCycles: Int = 2,
+        phaseTwoFramesPerCharacter: Int = 2,
+        randomCharset: String = "_!X$0-+*#",
+        cursorCharacter: String = "_"
+    ) {
+        self.textOne = textOne
+        self.textTwo = textTwo
+        self.textThree = textThree
+        self.currentTextIndex = max(0, min(currentTextIndex, 2))
+        self.animationSpeed = animationSpeed
+        self.animationDelay = animationDelay
+        self.phaseOneCycles = phaseOneCycles
+        self.phaseTwoFramesPerCharacter = phaseTwoFramesPerCharacter
+        self.randomCharset = randomCharset
+        self.cursorCharacter = cursorCharacter
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        textOne = try container.decodeIfPresent(String.self, forKey: .textOne) ?? Self.default.textOne
+        textTwo = try container.decodeIfPresent(String.self, forKey: .textTwo) ?? Self.default.textTwo
+        textThree = try container.decodeIfPresent(String.self, forKey: .textThree) ?? Self.default.textThree
+
+        if let currentTextIndex = try container.decodeIfPresent(Int.self, forKey: .currentTextIndex) {
+            self.currentTextIndex = max(0, min(currentTextIndex, 2))
+        } else if let showingFirstText = try container.decodeIfPresent(Bool.self, forKey: .showingFirstText) {
+            self.currentTextIndex = showingFirstText ? 0 : 1
+        } else {
+            self.currentTextIndex = Self.default.currentTextIndex
+        }
+
+        animationSpeed = try container.decodeIfPresent(Double.self, forKey: .animationSpeed) ?? Self.default.animationSpeed
+        animationDelay = try container.decodeIfPresent(Double.self, forKey: .animationDelay) ?? Self.default.animationDelay
+        phaseOneCycles = try container.decodeIfPresent(Int.self, forKey: .phaseOneCycles) ?? Self.default.phaseOneCycles
+        phaseTwoFramesPerCharacter = try container.decodeIfPresent(Int.self, forKey: .phaseTwoFramesPerCharacter) ?? Self.default.phaseTwoFramesPerCharacter
+        randomCharset = try container.decodeIfPresent(String.self, forKey: .randomCharset) ?? Self.default.randomCharset
+        cursorCharacter = try container.decodeIfPresent(String.self, forKey: .cursorCharacter) ?? Self.default.cursorCharacter
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(textOne, forKey: .textOne)
+        try container.encode(textTwo, forKey: .textTwo)
+        try container.encode(textThree, forKey: .textThree)
+        try container.encode(currentTextIndex, forKey: .currentTextIndex)
+        try container.encode(animationSpeed, forKey: .animationSpeed)
+        try container.encode(animationDelay, forKey: .animationDelay)
+        try container.encode(phaseOneCycles, forKey: .phaseOneCycles)
+        try container.encode(phaseTwoFramesPerCharacter, forKey: .phaseTwoFramesPerCharacter)
+        try container.encode(randomCharset, forKey: .randomCharset)
+        try container.encode(cursorCharacter, forKey: .cursorCharacter)
+    }
 }
 
 struct SexySensitiveModeView: View {
@@ -27,7 +103,8 @@ struct SexySensitiveModeView: View {
     @State private var cursorCharacter: String
     @State private var textOne: String
     @State private var textTwo: String
-    @State private var showingFirstText: Bool
+    @State private var textThree: String
+    @State private var currentTextIndex: Int
     @State private var animationSourceText: String
     @State private var animationTargetText: String
 
@@ -41,9 +118,12 @@ struct SexySensitiveModeView: View {
         _cursorCharacter = State(initialValue: settings.cursorCharacter)
         _textOne = State(initialValue: settings.textOne)
         _textTwo = State(initialValue: settings.textTwo)
-        _showingFirstText = State(initialValue: settings.showingFirstText)
-        _animationSourceText = State(initialValue: settings.showingFirstText ? settings.textOne : settings.textTwo)
-        _animationTargetText = State(initialValue: settings.showingFirstText ? settings.textTwo : settings.textOne)
+        _textThree = State(initialValue: settings.textThree)
+        _currentTextIndex = State(initialValue: max(0, min(settings.currentTextIndex, 2)))
+        let texts = [settings.textOne, settings.textTwo, settings.textThree]
+        let safeIndex = max(0, min(settings.currentTextIndex, 2))
+        _animationSourceText = State(initialValue: texts[safeIndex])
+        _animationTargetText = State(initialValue: texts[(safeIndex + 1) % texts.count])
     }
 
     var body: some View {
@@ -78,7 +158,11 @@ struct SexySensitiveModeView: View {
             syncDisplayedTexts()
             persistSettings()
         }
-        .onChange(of: showingFirstText) { _, _ in
+        .onChange(of: textThree) { _, _ in
+            syncDisplayedTexts()
+            persistSettings()
+        }
+        .onChange(of: currentTextIndex) { _, _ in
             persistSettings()
         }
         .onChange(of: animationSpeed) { _, _ in
@@ -100,9 +184,10 @@ struct SexySensitiveModeView: View {
             persistSettings()
         }
         .onTapGesture {
-            animationSourceText = showingFirstText ? textOne : textTwo
-            animationTargetText = showingFirstText ? textTwo : textOne
-            showingFirstText.toggle()
+            let texts = orderedTexts
+            animationSourceText = texts[currentTextIndex]
+            currentTextIndex = (currentTextIndex + 1) % texts.count
+            animationTargetText = texts[currentTextIndex]
             animationRestartID = UUID()
         }
         .navigationTitle("Sexy-sensetive-mode")
@@ -124,6 +209,9 @@ struct SexySensitiveModeView: View {
                             .lineLimit(2...6)
 
                         TextField("Text 2", text: $textTwo, axis: .vertical)
+                            .lineLimit(2...6)
+
+                        TextField("Text 3", text: $textThree, axis: .vertical)
                             .lineLimit(2...6)
                     }
 
@@ -189,7 +277,8 @@ struct SexySensitiveModeView: View {
         let defaults = SexySensitiveModeSettings.default
         textOne = defaults.textOne
         textTwo = defaults.textTwo
-        showingFirstText = defaults.showingFirstText
+        textThree = defaults.textThree
+        currentTextIndex = defaults.currentTextIndex
         animationSourceText = defaults.textOne
         animationTargetText = defaults.textTwo
         animationSpeed = defaults.animationSpeed
@@ -202,20 +291,19 @@ struct SexySensitiveModeView: View {
     }
 
     private func syncDisplayedTexts() {
-        if showingFirstText {
-            animationSourceText = textOne
-            animationTargetText = textTwo
-        } else {
-            animationSourceText = textTwo
-            animationTargetText = textOne
-        }
+        let texts = orderedTexts
+        let safeIndex = max(0, min(currentTextIndex, texts.count - 1))
+        currentTextIndex = safeIndex
+        animationSourceText = texts[safeIndex]
+        animationTargetText = texts[(safeIndex + 1) % texts.count]
     }
 
     private func persistSettings() {
         let settings = SexySensitiveModeSettings(
             textOne: textOne,
             textTwo: textTwo,
-            showingFirstText: showingFirstText,
+            textThree: textThree,
+            currentTextIndex: currentTextIndex,
             animationSpeed: animationSpeed,
             animationDelay: animationDelay,
             phaseOneCycles: phaseOneCycles,
@@ -237,6 +325,10 @@ struct SexySensitiveModeView: View {
         }
 
         return settings
+    }
+
+    private var orderedTexts: [String] {
+        [textOne, textTwo, textThree]
     }
 }
 

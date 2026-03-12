@@ -35,7 +35,14 @@ struct SpecialTextView: View {
     }
 
     var body: some View {
-        Text(displayText)
+        ZStack(alignment: .leading) {
+            // Reserve the final text block size so the animated layer does not
+            // change layout while characters are shuffling.
+            Text(text)
+                .opacity(0)
+
+            Text(displayText)
+        }
             .onAppear {
                 startAnimation()
             }
@@ -86,18 +93,14 @@ struct SpecialTextView: View {
 
     private func runPhase1() {
         let maxSteps = max(text.count * max(configuration.phaseOneCycles, 1), 1)
-        let currentLength = min(animationStep + 1, text.count)
+        let characters = Array(text)
 
         var chars: [Character] = []
         chars.reserveCapacity(text.count)
 
-        for index in 0..<currentLength {
+        for index in 0..<characters.count {
             let previous = index > 0 ? chars[index - 1] : nil
             chars.append(randomChar(previous: previous))
-        }
-
-        while chars.count < text.count {
-            chars.append(" ")
         }
 
         displayText = String(chars)

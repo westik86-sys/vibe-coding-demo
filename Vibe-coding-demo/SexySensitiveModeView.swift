@@ -59,7 +59,7 @@ struct SexySensitiveModeView: View {
                     animateOnAppear: false,
                     configuration: animationConfiguration
                 )
-                    .font(.custom("Inter-Regular", size: 58))
+                    .font(.system(size: 58, weight: .regular, design: .monospaced))
                     .multilineTextAlignment(.center)
             }
             .foregroundStyle(.white)

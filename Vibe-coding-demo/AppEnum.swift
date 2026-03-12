@@ -82,7 +82,7 @@ enum AppProject: String, CaseIterable, Hashable, Identifiable {
         case .prismEffectV2:
             return "Copy of Prism-Effect for further iteration"
         case .sexySensitiveMode:
-            return "Renamed FrostUI playground"
+            return "Special text playground"
         // Add subtitle mapping for "Project 2" here:
         // case .project2: return "Your next mini-project"
         }

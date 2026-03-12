@@ -47,7 +47,7 @@ struct ContentView: View {
                 case .prismEffectV2:
                     PrismEffectV2View()
                 case .sexySensitiveMode:
-                    FrostUIView()
+                    SexySensitiveModeView()
                 }
             }
         }

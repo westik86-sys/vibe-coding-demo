@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct FrostUIView: View {
+struct SexySensitiveModeView: View {
     @State private var isShowingSettings = false
     @State private var animationRestartID = UUID()
     @State private var animationSpeed: Double = 26
@@ -17,7 +17,7 @@ struct FrostUIView: View {
 
             VStack(spacing: 12) {
                 SpecialTextView(
-                    "Ты пидор 🤡",
+                    "Ты пидор",
                     configuration: animationConfiguration
                 )
                     .id(animationRestartID)
@@ -117,6 +117,6 @@ struct FrostUIView: View {
 
 #Preview {
     NavigationStack {
-        FrostUIView()
+        SexySensitiveModeView()
     }
 }
